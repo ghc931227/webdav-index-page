@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <title>File Manager</title>
+
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/nifty.min.css" rel="stylesheet">
+    <link href="css/nifty-demo-icons.min.css" rel="stylesheet">
+    <link href="plugins/font-awesome/css/font-awesome.min.css" rel="stylesheet">
+    <link href="plugins/pace/pace.min.css" rel="stylesheet">
+
+    <style>
+        .faicon {
+            zoom: 1.3;
+        }
+        .btn-remark {
+            font-size: 10px;
+        }
+        .input-hide {
+            display: none!important;
+        }
+        .input-show {
+            display: inline-block!important;
+        }
+        #navbar .btn {
+            padding: 6px 6px!important;
+        }
+        #footer .btn {
+            padding: 12px 12px!important;
+        }
+        #footer {
+            height: 4.5em;
+            padding: 0;
+        }
+        .file-control {
+            width: 30px!important;
+        }
+        #demo-nifty-settings {
+            display: none;
+        }
+    </style>
+
+    <script src="js/long-press-event.min.js"></script>
+    <script src="plugins/pace/pace.min.js"></script>
+    <script src="js/jquery.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/nifty.min.js"></script>
+    <script src="js/nifty-demo.min.js"></script>
+    <script src="js/i18n.js"></script>
+    <script type="text/javascript" src="js/webdav.js"></script>
+    <script type="text/javascript" src="js/main.js"></script>
+
+    <script>
+        var customToolbar = 'show-when-custom';
+        var curToolbar = customToolbar;
+        function changeToolbar(toolbar){
+            if(!toolbar) toolbar = customToolbar;
+            curToolbar = toolbar;
+            var arr = ['show-when-custom', 'show-when-select', 'show-when-new', 'show-when-sort', 'show-when-mvcp'];
+            for(var i in arr){
+                if(arr[i] == toolbar){
+                    $('.' + arr[i]).show();
+                }else{
+                    $('.' + arr[i]).hide();
+                }
+            }
+        }
+
+        var curPath = getStorage('curPath') || '';
+        var curDir;
+        var fs = client();
+
+        $(document).ready(function (){
+            // i18n
+            $('.btn-remark').addClass('i18n-key');
+            changeLang();
+
+            // toolbar
+            changeToolbar();
+
+            // sort
+            $('.fa-sort-amount').addClass('hide');
+            var sortItem = getStorage('sortItem');
+            var asc = getStorage(sortItem + 'asc') === 'true' ? 'asc' : 'desc';
+            $('.for-sort-' + sortItem).find('.fa-sort-amount-' + asc).removeClass('hide');
+            $('.for-sort').click(function () {
+                var sortItem = $(this).attr('sortitem');
+                setStorage('sortItem', sortItem);
+                var ascname = sortItem + 'asc';
+                var asc = getStorage(sortItem + 'asc') === 'true' ? 'false' : 'true';
+                setStorage(ascname, asc);
+
+                $('.fa-sort-amount').addClass('hide');
+                $('.for-sort-' + sortItem).find('.fa-sort-amount-' + (asc == 'true' ? 'asc' : 'desc')).removeClass('hide');
+
+                loadDir(fs.dir(curPath));
+            });
+
+            loadDir(fs.dir(curPath));
+        });
+
+
+    </script>
+
+</head>
+
+<body>
+<input id="file" class="hide" type="file" onchange="uploadFiles($(this)[0].files);" multiple="multiple"/>
+<div id="container" class="effect aside-float aside-bright mainnav-sm navbar-fixed footer-fixed">
+    <header id="navbar" style="background-color: #FFFFFF">
+        <div style="padding-left: 2em;padding-right: 2em;">
+            <div class="bord-btm pad-ver">
+                <ol class="breadcrumb">
+
+                </ol>
+            </div>
+            <div class="hidden-xs hidden-sm">
+                <div class="btn-group btn-group-justified show-when-custom">
+                    <div class="btn bord-no btn-label" onclick="changeToolbar('show-when-select');$('.checkbox').prop('checked', true);$('.checkbox').removeClass('hide');">
+                        <i class="faicon fa fa-square-o"></i>
+                        <br><span class="btn-remark" i18n-key="Select All">Select All</span>
+                    </div>
+                    <div class="btn bord-no btn-label" onclick="loadDir(fs.dir(curPath));">
+                        <i class="faicon fa fa-refresh"></i>
+                        <br><span class="btn-remark" i18n-key="Refresh">Refresh</span>
+                    </div>
+                    <div class="btn bord-no btn-label" onclick="changeToolbar('show-when-new');">
+                        <i class="faicon fa fa-plus-square-o"></i>
+                        <br><span class="btn-remark" i18n-key="New">New</span>
+                    </div>
+                    <div class="btn bord-no btn-label" onclick="changeToolbar('show-when-sort');">
+                        <i class="faicon fa fa-sort"></i>
+                        <br><span class="btn-remark" i18n-key="Sort">Sort</span>
+                    </div>
+                </div>
+
+                <div class="btn-group btn-group-justified show-when-new">
+                    <div class="btn bord-no btn-label" onclick="mkdir();">
+                        <i class="faicon fa fa-folder-o"></i>
+                        <br><span class="btn-remark" i18n-key="New Folder">New Folder</span>
+                    </div>
+                    <div class="btn bord-no btn-label" onclick="newfile();">
+                        <i class="faicon fa fa-file-o"></i>
+                        <br><span class="btn-remark" i18n-key="New File">New File</span>
+                    </div>
+                    <div class="loading btn bord-no btn-label" onclick="$(this).css('background-color', '');$('#file').val('');$('#file').click();">
+                        <i class="faicon fa fa-cloud-upload"></i>
+                        <br><span class="btn-remark" i18n-key="Upload">Upload</span>
+                    </div>
+                    <div class="btn bord-no btn-label" onclick="cancel();">
+                        <i class="faicon fa fa-ban"></i>
+                        <br><span class="btn-remark" i18n-key="Cancel">Cancel</span>
+                    </div>
+                </div>
+
+                <div class="btn-group btn-group-justified show-when-sort">
+                    <div class="btn bord-no btn-label for-sort for-sort-name" sortitem="name">
+                        <i class="faicon fa fa-sort-amount fa-sort-amount-asc"></i>
+                        <i class="faicon fa fa-sort-amount fa-sort-amount-desc"></i>
+                        <br><span class="btn-remark" i18n-key="Name">Name</span>
+                    </div>
+                    <div class="btn bord-no btn-label for-sort for-sort-size" sortitem="size">
+                        <i class="faicon fa fa-sort-amount fa-sort-amount-asc"></i>
+                        <i class="faicon fa fa-sort-amount fa-sort-amount-desc"></i>
+                        <br><span class="btn-remark" i18n-key="Size">Size</span>
+                    </div>
+                    <div class="btn bord-no btn-label for-sort for-sort-time" sortitem="time">
+                        <i class="faicon fa fa-sort-amount fa-sort-amount-asc"></i>
+                        <i class="faicon fa fa-sort-amount fa-sort-amount-desc"></i>
+                        <br><span class="btn-remark" i18n-key="Time">Time</span>
+                    </div>
+                    <div class="btn bord-no btn-label" onclick="cancel();">
+                        <i class="faicon fa fa-ban"></i>
+                        <br><span class="btn-remark" i18n-key="Cancel">Cancel</span>
+                    </div>
+                </div>
+
+                <div class="btn-group btn-group-justified show-when-select">
+                    <div class="btn bord-no btn-label" onclick="copyfiles();">
+                        <i class="faicon fa fa-copy"></i>
+                        <br><span class="btn-remark" i18n-key="Copy">Copy</span>
+                    </div>
+                    <div class="btn bord-no btn-label" onclick="cutfiles();">
+                        <i class="faicon fa fa-cut"></i>
+                        <br><span class="btn-remark" i18n-key="Cut">Cut</span>
+                    </div>
+                    <div class="btn bord-no btn-label" onclick="rename();">
+                        <i class="faicon fa fa-edit"></i>
+                        <br><span class="btn-remark" i18n-key="Rename">Rename</span>
+                    </div>
+                    <div class="btn bord-no btn-label" onclick="deleteFiles();">
+                        <i class="faicon fa fa-trash-o"></i>
+                        <br><span class="btn-remark" i18n-key="Delete">Delete</span>
+                    </div>
+                    <div class="btn bord-no btn-label" onclick="cancel();">
+                        <i class="faicon fa fa-ban"></i>
+                        <br><span class="btn-remark" i18n-key="Cancel">Cancel</span>
+                    </div>
+                </div>
+                <div class="btn-group btn-group-justified show-when-mvcp">
+                    <div class="btn bord-no btn-label" onclick="paste();">
+                        <i class="faicon fa fa-paste"></i>
+                        <br><span class="btn-remark" i18n-key="Paste">Paste</span>
+                    </div>
+                    <div class="btn bord-no btn-label" onclick="mkdir();">
+                        <i class="faicon fa fa-folder-o"></i>
+                        <br><span class="btn-remark" i18n-key="New Folder">New Folder</span>
+                    </div>
+                    <div class="btn bord-no btn-label" onclick="cancel();">
+                        <i class="faicon fa fa-ban"></i>
+                        <br><span class="btn-remark" i18n-key="Cancel">Cancel</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </header>
+    <div id="page-content" style="padding-top: 6em;">
+
+        <div class="panel">
+            <div class="pad-all file-manager">
+                <div class="fixed-fluid">
+                    <div class="fluid file-panel">
+                        <ul id="file-list" class="file-list">
+
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <footer id="footer" class="hidden-md hidden-lg">
+        <div class="btn-group btn-group-justified show-when-custom">
+            <div class="btn bord-no btn-label" onclick="changeToolbar('show-when-select');$('.checkbox').prop('checked', true);$('.checkbox').removeClass('hide');">
+                <i class="faicon fa fa-square-o"></i>
+                <br><span class="btn-remark" i18n-key="Select All">Select All</span>
+            </div>
+            <div class="btn bord-no btn-label" onclick="loadDir(fs.dir(curPath));">
+                <i class="faicon fa fa-refresh"></i>
+                <br><span class="btn-remark" i18n-key="Refresh">Refresh</span>
+            </div>
+            <div class="btn bord-no btn-label" onclick="changeToolbar('show-when-new');">
+                <i class="faicon fa fa-plus-square-o"></i>
+                <br><span class="btn-remark" i18n-key="New">New</span>
+            </div>
+            <div class="btn bord-no btn-label" onclick="changeToolbar('show-when-sort');">
+                <i class="faicon fa fa-sort"></i>
+                <br><span class="btn-remark" i18n-key="Sort">Sort</span>
+            </div>
+        </div>
+
+        <div class="btn-group btn-group-justified show-when-new">
+            <div class="btn bord-no btn-label" onclick="mkdir();">
+                <i class="faicon fa fa-folder-o"></i>
+                <br><span class="btn-remark" i18n-key="New Folder">New Folder</span>
+            </div>
+            <div class="btn bord-no btn-label" onclick="newfile();">
+                <i class="faicon fa fa-file-o"></i>
+                <br><span class="btn-remark" i18n-key="New File">New File</span>
+            </div>
+            <div class="loading btn bord-no btn-label" onclick="$(this).css('background-color', '');$('#file').val('');$('#file').click();">
+                <i class="faicon fa fa-cloud-upload"></i>
+                <br><span class="btn-remark" i18n-key="Upload">Upload</span>
+            </div>
+            <div class="btn bord-no btn-label" onclick="cancel();">
+                <i class="faicon fa fa-ban"></i>
+                <br><span class="btn-remark" i18n-key="Cancel">Cancel</span>
+            </div>
+        </div>
+
+        <div class="btn-group btn-group-justified show-when-sort">
+            <div class="btn bord-no btn-label for-sort for-sort-name" sortitem="name">
+                <i class="faicon fa fa-sort-amount fa-sort-amount-asc"></i>
+                <i class="faicon fa fa-sort-amount fa-sort-amount-desc"></i>
+                <br><span class="btn-remark" i18n-key="Name">Name</span>
+            </div>
+            <div class="btn bord-no btn-label for-sort for-sort-size" sortitem="size">
+                <i class="faicon fa fa-sort-amount fa-sort-amount-asc"></i>
+                <i class="faicon fa fa-sort-amount fa-sort-amount-desc"></i>
+                <br><span class="btn-remark" i18n-key="Size">Size</span>
+            </div>
+            <div class="btn bord-no btn-label for-sort for-sort-time" sortitem="time">
+                <i class="faicon fa fa-sort-amount fa-sort-amount-asc"></i>
+                <i class="faicon fa fa-sort-amount fa-sort-amount-desc"></i>
+                <br><span class="btn-remark" i18n-key="Time">Time</span>
+            </div>
+            <div class="btn bord-no btn-label" onclick="cancel();">
+                <i class="faicon fa fa-ban"></i>
+                <br><span class="btn-remark" i18n-key="Cancel">Cancel</span>
+            </div>
+        </div>
+
+        <div class="btn-group btn-group-justified show-when-select">
+            <div class="btn bord-no btn-label" onclick="copyfiles();">
+                <i class="faicon fa fa-copy"></i>
+                <br><span class="btn-remark" i18n-key="Copy">Copy</span>
+            </div>
+            <div class="btn bord-no btn-label" onclick="cutfiles();">
+                <i class="faicon fa fa-cut"></i>
+                <br><span class="btn-remark" i18n-key="Cut">Cut</span>
+            </div>
+            <div class="btn bord-no btn-label" onclick="rename();">
+                <i class="faicon fa fa-edit"></i>
+                <br><span class="btn-remark" i18n-key="Rename">Rename</span>
+            </div>
+            <div class="btn bord-no btn-label" onclick="deleteFiles();">
+                <i class="faicon fa fa-trash-o"></i>
+                <br><span class="btn-remark" i18n-key="Delete">Delete</span>
+            </div>
+            <div class="btn bord-no btn-label" onclick="cancel();">
+                <i class="faicon fa fa-ban"></i>
+                <br><span class="btn-remark" i18n-key="Cancel">Cancel</span>
+            </div>
+        </div>
+        <div class="btn-group btn-group-justified show-when-mvcp">
+            <div class="btn bord-no btn-label" onclick="paste();">
+                <i class="faicon fa fa-paste"></i>
+                <br><span class="btn-remark" i18n-key="Paste">Paste</span>
+            </div>
+            <div class="btn bord-no btn-label" onclick="mkdir();">
+                <i class="faicon fa fa-folder-o"></i>
+                <br><span class="btn-remark" i18n-key="New Folder">New Folder</span>
+            </div>
+            <div class="btn bord-no btn-label" onclick="cancel();">
+                <i class="faicon fa fa-ban"></i>
+                <br><span class="btn-remark" i18n-key="Cancel">Cancel</span>
+            </div>
+        </div>
+    </footer>
+
+    <div class="hide">
+        <li id="up-li" class="file" onclick="goUp();">
+            <span href="#" class="file-details">
+                <div class="media-block">
+                    <div class="media-body">
+                        <p class="file-name single-line">...</p>
+                    </div>
+                </div>
+            </span>
+        </li>
+
+        <li id="folder-li" class="file" data-long-press-delay="500">
+            <div class="file-control">
+                <input class="checkbox hide" type="checkbox">
+            </div>
+            <div class="file-attach-icon"></div>
+            <span href="#" class="file-details" title="$name">
+                <div class="media-block">
+                    <div class="media-left"><i class="demo-psi-folder"></i></div>
+                    <div class="media-body">
+                        <p class="file-name" title="$name">$namestr</p>
+                        <small>$lastmodified | $size</small>
+                    </div>
+                </div>
+            </span>
+        </li>
+
+        <li id="file-li" class="file" data-long-press-delay="500">
+            <div class="file-control">
+                <input class="checkbox hide" type="checkbox">
+            </div>
+            <div class="file-attach-icon"></div>
+            <span href="#" class="file-details">
+                <div class="media-block">
+                    <div class="media-left"><i class="demo-psi-file text-success"></i></div>
+                    <div class="media-body">
+                        <p class="file-name">$namestr</p>
+                        <small>$lastmodified | $size</small>
+                    </div>
+                </div>
+            </span>
+        </li>
+    </div>
+    <script>
+        var uplihtml = $('#up-li')[0].outerHTML;
+        var folderlihtml = $('#folder-li')[0].outerHTML;
+        var filelihtml = $('#file-li')[0].outerHTML;
+
+        var loadDir = function (dir) {
+            curPath = dir.url;
+            curDir = dir;
+            setStorage('curPath', curPath.replace(window.location.protocol + '//' + window.location.host, ''));
+            dir.children(function (children) {
+                $('#file-list').empty();
+                $('#file-list').append($('#up-li').clone(true));
+                children.sort(sortFor);
+                setStorage('collection', JSON.stringify(children));
+                for (var i in children) {
+                    var row = getRow(children[i]);
+                    $('#file-list').append(row);
+                }
+            });
+
+            $('.breadcrumb').empty();
+            var splpath = unescape(curPath.replace(window.location.origin, '')).split('/');
+            var lipath = '';
+            for(var i in splpath){
+                lipath += '/' + splpath[i];
+                if(lipath == '/') lipath = '';
+                var li = $('<li path="' + lipath + '"><a>' + (splpath[i] || '/') + '</a></li>');
+                li.on('click', function (){
+                    loadDir(fs.dir(window.location.origin + $(this).attr('path')));
+                });
+                $('.breadcrumb').append(li);
+            }
+        };
+
+        var getRow = function (obj) {
+            var namestr = obj.name;
+            if (namestr.length > 45) namestr = namestr.substring(0, 43) + '...';
+            var row;
+            if(obj.type == 'dir'){
+                row = $(
+                    folderlihtml.replace('$namestr', namestr)
+                        .replace('$name', obj.name)
+                        .replace('$size', obj.size || '--')
+                        .replace('$lastmodified', obj.lastmodified)
+                        .replace('"folder-li"', '""')
+                );
+            }
+            else if(obj.type == 'file'){
+                row = $(
+                    filelihtml.replace('$namestr', namestr)
+                        .replace('$name', obj.name)
+                        .replace('$size', obj.size || '--')
+                        .replace('$lastmodified', obj.lastmodified)
+                        .replace('"file-li"', '""')
+                );
+            }
+            row[0].fsdata = obj;
+            row.on('click', function (event) {
+                if(curToolbar == 'show-when-select'){
+                    $(this).find('.checkbox').click();
+                    return;
+                }
+                var _this = $(this);
+                var fsdata = _this[0].fsdata;
+                if (event.target.tagName.toUpperCase() !== 'INPUT') {
+                    if (fsdata.type === 'file') {
+                        url = fsdata.url;
+                        if(!!fsdata.doctype){
+                            url = 'viewer.html?href=' + url;
+                        }
+                        window.open(url);
+                    } else if (fsdata.type === 'dir') {
+                        loadDir(fs.dir(fsdata.url));
+                    }
+                }
+            });
+            row.on('long-press', function (){
+                changeToolbar('show-when-select');
+                $('.checkbox').removeClass('hide');
+                // $(this).find('.checkbox').prop('checked', true);
+            });
+            return row;
+        }
+
+        var uploadFiles = function (fileArr) {
+            if (_UPLOAD.process) return;
+            _UPLOAD.fileobjarr = fileArr;
+            _UPLOAD.fileindex = 0;
+            _UPLOAD.uploadStart();
+            changeToolbar();
+        };
+
+        var deleteFiles = function () {
+            var fileArr = getCheckedFiles();
+            if (fileArr.length > 0 && confirm('确认删除文件吗?')) {
+                _DELETE.fileobjarr = fileArr;
+                _DELETE.fileindex = 0;
+                _DELETE.deleteStart();
+                changeToolbar();
+                $('.checkbox').prop('checked', false);
+                $('.checkbox').addClass('hide');
+            }
+        };
+
+        var mkdir = function () {
+            var dirname = prompt('请输入文件夹名称', '新文件夹');
+            if (dirname) {
+                curDir.mkdir(dirname, function (res, status) {
+                    if (status == 201) {
+                        loadDir(fs.dir(curPath));
+                        return;
+                    }
+                    alert('文件夹名称非法或文件夹已存在!');
+                    mkdir();
+                });
+            }
+        };
+
+        var newfile = function () {
+            var filename = prompt('请输入文件名称', '文件');
+            if (filename) {
+                curDir.upload(filename, '', function (res, status) {
+                    if (status == 201) {
+                        loadDir(fs.dir(curPath));
+                        return;
+                    }
+                    alert('文件名非法或文件已存在!');
+                    newfile();
+                });
+            }
+        };
+
+        var copyfiles = function () {
+            var fileArr = getCheckedFiles();
+            if (fileArr.length > 0) {
+                _MVCP.action = 'COPY';
+                _MVCP.fileobjarr = fileArr;
+                _MVCP.fileindex = 0;
+            }
+            changeToolbar('show-when-mvcp');
+            $('.checkbox').prop('checked', false);
+            $('.checkbox').addClass('hide');
+        };
+
+        var cutfiles = function () {
+            var fileArr = getCheckedFiles();
+            if (fileArr.length > 0) {
+                _MVCP.action = 'MOVE';
+                _MVCP.fileobjarr = fileArr;
+                _MVCP.fileindex = 0;
+            }
+            changeToolbar('show-when-mvcp');
+            $('.checkbox').prop('checked', false);
+            $('.checkbox').addClass('hide');
+        };
+
+        var paste = function () {
+            if (_MVCP.fileobjarr.length > 0) {
+                _MVCP.doaction();
+            }
+            changeToolbar();
+        };
+
+        var rename = function () {
+            var fileArr = getCheckedFiles();
+            if (fileArr.length != 1) {
+                return;
+            } else {
+                var file = fileArr[0];
+                var newName = prompt('请输入新文件名:', file.name);
+                if (newName) {
+                    file.name = newName;
+                    fileArr[0] = file;
+                }
+                _MVCP.action = 'MOVE';
+                _MVCP.fileobjarr = fileArr;
+                _MVCP.fileindex = 0;
+                _MVCP.doaction(true);
+                changeToolbar();
+            }
+        };
+
+        var goUp = function () {
+            var pathspl = curPath.replace(window.location.protocol + '//' + window.location.host, '').split('/');
+            pathspl.pop();
+            curPath = window.location.protocol + '//' + window.location.host + pathspl.join('/');
+            loadDir(fs.dir(curPath));
+        };
+
+        var cancel = function (){
+            _MVCP.fileobjarr = [];
+            changeToolbar();
+            $('.checkbox').prop('checked', false);
+            $('.checkbox').addClass('hide');
+        };
+
+        function getCheckedFiles() {
+            var fileArr = [];
+            $('#file-list .checkbox:checked').each(function () {
+                fileArr.push($(this).parent().parent()[0].fsdata);
+            });
+            return fileArr;
+        }
+    </script>
+</div>
+</body>
+</html>

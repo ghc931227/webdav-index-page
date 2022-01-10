@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title> WebDAV </title>
+    <link href=" img/favicon.ico" rel="icon" type="image/png"/>
+    <link href=" css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
+    <style>
+        .arrow {
+            display: inline-block;
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+        }
+        .arrowup {
+            border-bottom: 10px solid grey;
+        }
+        .arrowdown {
+            border-top: 10px solid grey;
+        }
+        .btn-toolbar-left {
+            float: left;
+        }
+    </style>
+    <script type="text/javascript" src=" js/webdav.js"></script>
+    <script type="text/javascript" src=" js/jquery.min.js"></script>
+    <script type="text/javascript" src=" js/bootstrap.min.js"></script>
+    <script type="text/javascript" src=" js/main.js"></script>
+    <script>
+        function isMobile() {
+            var userAgentInfo = navigator.userAgent;
+            var Agents = ["Android", "iPhone", "SymbianOS", "Windows Phone", "iPad", "iPod"];
+            for (var v = 0; v < Agents.length; v++) {
+                if (userAgentInfo.indexOf(Agents[v]) > 0) {
+                    return true
+                }
+            }
+            return false;
+        }
+
+        var curPath = getStorage('curPath') || '';
+        var curDir;
+        var fs = client();
+    </script>
+</head>
+<body onload="if(isMobile()) window.location.href = 'index-m.html'">
+<div class="container">
+
+    <div style="height: 50px"></div>
+    <input id="file" class="invisible custom-file custom-file-input" type="file"
+           onchange="uploadFiles($(this)[0].files);" multiple="multiple"/>
+
+    <div class="btn-toolbar-left">
+        <button class="btn btn-outline-primary" onclick="mkdir();" type="button">新文件夹</button>
+        <span>&nbsp;</span>
+        <button class="btn btn-outline-primary" onclick="newfile();" type="button">新文件</button>
+        <span>&nbsp;</span>
+        <button id="loading" class="btn btn-outline-primary"
+                onclick="$(this).css('background-color', '');$('#file').val('');$('#file').click();" type="button">上传文件
+        </button>
+        <span>&nbsp;</span>
+    </div>
+
+    <div class="btn-toolbar">
+        <button class="btn btn-outline-primary" onclick="loadDir(fs.dir(curPath));" type="button">刷新</button>
+        <span>&nbsp;</span>
+        <button class="btn btn-outline-primary" onclick="rename();" type="button">重命名</button>
+        <span>&nbsp;</span>
+        <button class="btn btn-outline-primary" onclick="copyfiles();" type="button">复制</button>
+        <span>&nbsp;</span>
+        <button class="btn btn-outline-primary" onclick="cutfiles();" type="button">剪切</button>
+        <span>&nbsp;</span>
+        <button class="btn btn-outline-primary" onclick="paste();" type="button">粘贴</button>
+        <span>&nbsp;</span>
+        <button class="btn btn-danger" onclick="deleteFiles();" type="button">删除</button>
+    </div>
+
+    <div style="height: 50px"></div>
+    <table class="table table-hover">
+        <thead>
+        <tr>
+            <th width="10px;"></th>
+            <th sortitem="name">名称<i class="arrow"></i></th>
+            <th sortitem="size">大小<i class="arrow"></i></th>
+            <th sortitem="time">最后修改<i class="arrow"></i></th>
+        </tr>
+        </thead>
+        <tr style="background-color: #f6f8fa;" onclick="goUp();">
+            <td>
+            </td>
+            <td>
+                . . <span style="font-size: 0.75em;">上一级</span>
+            </td>
+            <td>
+            </td>
+            <td>
+            </td>
+        </tr>
+        <tbody class="file dirlist">
+
+        </tbody>
+        <tbody class="file filelist">
+
+        </tbody>
+    </table>
+
+    <script type="text/javascript">
+        $('table').on('selectstart', function () {
+            return false;
+        });
+    </script>
+
+    <table style="display: none;">
+        <tbody id="template">
+        <tr>
+            <td><input class="checkbox" type="checkbox"></td>
+            <td class="name" title="$name"> $namestr</td>
+            <td> $size</td>
+            <td> $lastmodified</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+<script type="application/javascript">
+    $(document).ready(function () {
+        $('.file').on('click', 'tr', function (event) {
+            var _this = $(this);
+            var fsdata = _this[0].fsdata;
+            if (event.target.className === 'name') {
+                if (fsdata.type === 'file') {
+                    url = fsdata.url;
+                    if(!!fsdata.doctype){
+                        url = 'viewer.html?href=' + url;
+                    }
+                    window.open(url);
+                } else if (fsdata.type === 'dir') {
+                    loadDir(fs.dir(fsdata.url));
+                }
+            }
+            if (event.target.className !== 'checkbox') {
+                _this.find('input').prop('checked', !!!$(this).find('input').prop('checked'));
+            }
+        });
+        
+        $('.file').on('mouseenter', 'tr', function (event) {
+            var _this = $(this);
+            var fsdata = _this[0].fsdata;
+            if (fsdata.type === 'file') {
+                var showname = _this.find('td').eq(1).text();
+                var url = fsdata.url;
+                var a = $('<a href="' + url+ '">' + showname + '</a>');
+                _this.find('td').eq(1).empty();
+                _this.find('td').eq(1).append(a);
+                _this[0].fsdata.showname = showname;
+            }
+        });
+        $('.file').on('mouseleave', 'tr', function (event) {
+            var _this = $(this);
+            var fsdata = _this[0].fsdata;
+            if (fsdata.type === 'file') {
+                _this.find('td').eq(1).empty();
+                _this.find('td').eq(1).text(fsdata.showname);
+                delete _this[0].fsdata.showname;
+            }
+        });
+
+
+        $('th').click(function () {
+            var sortItem = $(this).attr('sortitem');
+            setStorage('sortItem', sortItem);
+            var ascname = sortItem + 'asc';
+            var asc = getStorage(sortItem + 'asc') === 'true' ? 'false' : 'true';
+            setStorage(ascname, asc);
+
+            $('.arrow').removeClass('arrowup').removeClass('arrowdown');
+            $(this).find('.arrow').addClass(asc === 'true' ? 'arrowup' : 'arrowdown');
+
+            loadDir(fs.dir(curPath));
+        });
+
+        loadDir(fs.dir(curPath));
+    });
+
+    var tmplatehtml = $('#template').html();
+
+    var loadDir = function (dir) {
+        curPath = dir.url;
+        curDir = dir;
+        setStorage('curPath', curPath.replace(window.location.protocol + '//' + window.location.host, ''));
+        dir.children(function (children) {
+            $('.dirlist').empty();
+            $('.filelist').empty();
+            children.sort(sortFor);
+            setStorage('collection', JSON.stringify(children));
+            for (var i in children) {
+                var row = getRow(children[i]);
+                if (children[i].type === 'dir') {
+                    $('.dirlist').append(row);
+                }
+                if (children[i].type === 'file') {
+                    $('.filelist').append(row);
+                }
+            }
+        });
+
+        var getRow = function (obj) {
+            var namestr = obj.name;
+            if (namestr.length > 45) namestr = namestr.substring(0, 43) + '...';
+            var row = $(
+                tmplatehtml.replace('$namestr', namestr)
+                .replace('$name', obj.name)
+                .replace('$size', obj.size || '--')
+                .replace('$lastmodified', obj.lastmodified)
+                );
+            row[0].fsdata = obj;
+            return row;
+        }
+    };
+
+    var uploadFiles = function (fileArr) {
+        if (_UPLOAD.process) return;
+        _UPLOAD.fileobjarr = fileArr;
+        _UPLOAD.fileindex = 0;
+        _UPLOAD.uploadStart();
+    };
+
+    var deleteFiles = function () {
+        var fileArr = getCheckedFiles();
+        if (fileArr.length > 0 && confirm('确认删除文件吗?')) {
+            _DELETE.fileobjarr = fileArr;
+            _DELETE.fileindex = 0;
+            _DELETE.deleteStart();
+        }
+    };
+
+    var mkdir = function () {
+        var dirname = prompt('请输入文件夹名称', '新文件夹');
+        if (dirname) {
+            curDir.mkdir(dirname, function (res, status) {
+                if (status == 201) {
+                    loadDir(fs.dir(curPath));
+                    return;
+                }
+                alert('文件夹名称非法或文件夹已存在!');
+                mkdir();
+            });
+        }
+    };
+
+    var newfile = function () {
+        var filename = prompt('请输入文件名称', '文件');
+        if (filename) {
+            curDir.upload(filename, '', function (res, status) {
+                if (status == 201) {
+                    loadDir(fs.dir(curPath));
+                    return;
+                }
+                alert('文件名非法或文件已存在!');
+                newfile();
+            });
+        }
+    };
+
+    var copyfiles = function () {
+        var fileArr = getCheckedFiles();
+        if (fileArr.length > 0) {
+            _MVCP.action = 'COPY';
+            _MVCP.fileobjarr = getCheckedFiles();
+            _MVCP.fileindex = 0;
+        }
+    };
+
+    var cutfiles = function () {
+        var fileArr = getCheckedFiles();
+        if (fileArr.length > 0) {
+            _MVCP.action = 'MOVE';
+            _MVCP.fileobjarr = fileArr;
+            _MVCP.fileindex = 0;
+        }
+    };
+
+    var paste = function () {
+        if (_MVCP.fileobjarr.length > 0) {
+            _MVCP.doaction();
+        }
+    };
+
+    var rename = function () {
+        var fileArr = getCheckedFiles();
+        if (fileArr.length != 1) {
+            return;
+        } else {
+            var file = fileArr[0];
+            var newName = prompt('请输入新文件名:', file.name);
+            if (newName) {
+                file.name = newName;
+                fileArr[0] = file;
+            }
+            _MVCP.action = 'MOVE';
+            _MVCP.fileobjarr = fileArr;
+            _MVCP.fileindex = 0;
+            _MVCP.doaction(true);
+        }
+    };
+
+    var goUp = function () {
+        var pathspl = curPath.replace(window.location.protocol + '//' + window.location.host, '').split('/');
+        pathspl.pop();
+        curPath = window.location.protocol + '//' + window.location.host + pathspl.join('/');
+        loadDir(fs.dir(curPath));
+    };
+
+    function getCheckedFiles() {
+        var fileArr = [];
+        $('.checkbox:checked').each(function () {
+            fileArr.push($(this).parent().parent()[0].fsdata);
+        });
+        return fileArr;
+    }
+</script>
+</body>
+</html>

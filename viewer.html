@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title> WebDAV </title>
+        <link href="img/favicon.ico" rel="icon" type="image/png" />
+        <link href="css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+        <link href="vditor/dist/index.css" rel="stylesheet" type="text/css" />
+        <script type="text/javascript" src="js/webdav.js"></script>
+        <script type="text/javascript" src="js/jquery.min.js"></script>
+        <script type="text/javascript" src="js/bootstrap.min.js"></script>
+        <script type="text/javascript" src="js/main.js"></script>
+        <script src="js/ace.min.js"></script>
+        <script src="js/theme-xcode.js"></script>
+        <script src="vditor/dist/index.min.js"></script>
+        <style>
+            #editor {
+                overflow: scroll;
+                display: none;
+                position: center;
+            }
+        </style>
+    </head>
+    <body style="border: none">
+        <div style="text-align:center; background-color:beige; height: 25px;"></div>
+
+        <div style="display: none;" id="vditor"></div>
+
+        <div id="container" style="text-align:center; background-color: white; margin: 0 auto;">
+
+        </div>
+
+        <div id="editor" ></div>
+        <div id="output" ></div>
+
+        <div style="text-align:center;">
+            <button id="saveBtn" class="btn btn-dark" style="display : none;border-radius: 50px;">保存</button>
+            <button class="btn btn-dark" style="border-radius: 50px;"><a id="downloadBtn">下载</a></button>
+        </div>
+
+        <script type="application/javascript">
+            var fs = client();
+            var url = window.location.href.replace(window.location.protocol + '//' + window.location.host, '');
+
+            if(url.indexOf('?') != -1){
+                var href = parseLinkParam(url).href;
+                var dirFs = client();
+                var imgDir = dirFs.dir(href.substring(0, href.lastIndexOf('/')) + '/imgs');
+                var file = fs.file(href);
+                var name = fs.name;
+                $('#downloadBtn').attr('download', name).attr('href', href);
+
+                var documenttype = fs.doctype;
+                if(documenttype === 'image' || documenttype === 'video'){
+                    var iframe = $('<iframe width="100%" style="display: block;border: none;"></iframe>');
+                    iframe.attr('src', href);
+                    iframe.height($(window).height() - 63);
+                    iframe.on('load', function () {
+                        iframe.contents().find('body').css('text-align', 'center');
+                        if(documenttype === 'image'){
+                            iframe.contents().find('img').css('max-width', $(window).width() + 'px');
+                            iframe.contents().find('img').css('max-height', $(window).height() - 64 + 'px');
+                        }
+                        if(documenttype === 'video'){
+                            iframe.contents().find('a').attr('download', name);
+                        }
+                    });
+                    $('#container').append(iframe);
+                }else if(documenttype === 'text'){
+                    var shellmode = false, outfile, lastactive;
+                    if(name === '_davshell.sh' || name === '_davshell.cmd'){
+                        shellmode = true;
+                        outfile = client().file(href.substring(0, href.length - name.length) + '_davshell.out');
+                        $('#saveBtn').text('运行 (Alt-Enter)');
+                        $('#downloadBtn').hide();
+                    }
+                    file.read(function (res, status) {
+                        var editor;
+                        if(name.endsWith('.md')){
+                            $('#vditor').show();
+                            var uploadFun = _UPLOAD;
+                            uploadFun.onloadSuccess = function (){
+                                uploadFun.fileindex ++;
+                                if(uploadFun.fileindex <= uploadFun.fileobjarr.length - 1){
+                                    uploadFun.uploadStart();
+                                }else{
+                                    uploadFun.process = false;
+                                    var insertVal = '';
+                                    for(var i in uploadFun.fileobjarr){
+                                        insertVal += '![](' + imgDir.url + '/' + uploadFun.fileobjarr[i].name + ')\n '
+                                    }
+                                    editor.insertValue(insertVal);
+                                }
+                            };
+                            uploadFun.uploadStart = function (overwrite){
+                                var fileobj = uploadFun.fileobjarr[uploadFun.fileindex];
+                                if(!overwrite){
+                                    WebDAV.PROPFIND(imgDir.url + '/' + fileobj.name, function (resbody, status) {
+                                        if(status !== '404'){
+                                            if(confirm('\'' + fileobj.name + '\' 已存在, 确认覆盖?')){
+                                                uploadFun.uploadStart(true);
+                                            }
+                                        }else{
+                                            uploadFun.uploadStart(true);
+                                        }
+                                    });
+                                }else{
+                                    uploadFun.process = true;
+                                    imgDir.upload(fileobj.name, fileobj, uploadFun.onloadSuccess, uploadFun.onload, uploadFun.onerror, null, null);
+                                }
+                            };
+                            editor = new Vditor('vditor', {
+                                mode: 'wysiwyg',
+                                height: document.documentElement.clientHeight * 0.92,
+                                value: res,
+                                cache: {
+                                    enable: false
+                                },
+                                upload: {
+                                    handler: function (files){
+                                        if (uploadFun.process) return;
+                                        try{
+                                            var _url = imgDir.url;
+                                            imgDir.url = _url.substring(0, _url.lastIndexOf('/'));
+                                            imgDir.mkdir('imgs');
+                                            imgDir.url = _url;
+                                        }catch (e){
+                                            console.log('imgs目录已存在');
+                                        }
+                                        uploadFun.fileobjarr = files;
+                                        uploadFun.fileindex = 0;
+                                        uploadFun.uploadStart();
+                                    }
+                                }
+                            });
+                        }else{
+                            editor = ace.edit('editor');
+                            var output;
+                            editor.setFontSize(16);
+                            editor.setTheme('ace/theme/xcode');
+                            editor.setValue(res, 1);
+                            editor.focus();
+
+                            $('#editor').css('height', shellmode ? (($(window).height() - 63) / 2) : ($(window).height() - 63));
+                            $('#editor').show();
+
+                            if(shellmode){
+                                output = ace.edit('output');
+                                output.setTheme("ace/theme/xcode");
+                                editor.setFontSize(14);
+                                $('#output').css('height', ($(window).height() - 63) / 2);
+                                $('#output').show();
+
+                                editor.commands.addCommand({
+                                    name: 'runshell',
+                                    bindKey: { win: 'Alt-Enter', mac: 'Enter' },
+                                    exec: function (editor) {
+                                        $('#saveBtn').trigger('click');
+                                    },
+                                    readOnly: false
+                                });
+
+                                $(document).on('click mousemove keypress', function () {
+                                    lastactive = new Date().getTime();
+                                });
+
+                                var counter = 0;
+                                var outres;
+                                setInterval(function () {
+                                    counter ++;
+                                    var nowTime = new Date().getTime();
+                                    if(nowTime - lastactive < 20 * 1000 || (counter * 400) % (20 * 1000) == 0){
+                                        outfile.read(function (res, status) {
+                                            if(status == 200 && outres !== res){
+                                                outres = res;
+                                                var formatout = formatLogText(res);
+                                                output.setValue(formatout, 1);
+                                                output.renderer.scrollToRow(formatout.split('\n').length + 1);
+                                            }
+                                        }, false);
+                                    }
+                                }, 400);
+                            }
+                        }
+                        $('#saveBtn').show();
+                        $('#saveBtn').click(function () {
+                            file.write(editor.getValue().replace(/\r/g, ''), function () {
+                                file.read(function (res, status) {
+                                    lastFetch = 0;
+                                    editor.setValue(res.trim(), 1);
+                                    editor.focus();
+                                });
+                            });
+                        });
+                    })
+                }
+            }
+
+            function formatLogText(text) {
+                // if(!text) return '';
+                // var arr = text.split('\n');
+                // var arr2 = [];
+                // for(var i in arr){
+                //     var line = arr[i];
+                //     if(line.startsWith('[download]')){
+                //         var lastarr;
+                //         if(arr2.length == 0 || typeof arr2[arr2.length - 1] === 'string'){
+                //             lastarr = [];
+                //             arr2.push(lastarr);
+                //         }else{
+                //             lastarr = arr2[arr2.length - 1];
+                //         }
+                //         lastarr.push(line);
+                //     }else{
+                //         arr2.push(line);
+                //     }
+                // }
+                // var restext = '';
+                // for(var i in arr2){
+                //     if(typeof arr2[i] === 'string'){
+                //         restext += arr2[i] + '\n';
+                //     }else{
+                //         var linearr = arr2[i];
+                //         restext += linearr[linearr.length - 1] + '\n';
+                //     }
+                // }
+                // return restext;
+                return text;
+            }
+        </script>
+
+    </body>
+</html>
