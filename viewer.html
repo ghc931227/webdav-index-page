@@ -44,7 +44,7 @@
             var url = window.location.href.replace(window.location.protocol + '//' + window.location.host, '');
 
             if(url.indexOf('?') != -1){
-                var href = parseLinkParam(url).href;
+                var href = new URLSearchParams(window.location.search).get('href');
                 var dirFs = client();
                 var imgDir = dirFs.dir(href.substring(0, href.lastIndexOf('/')) + '/imgs');
                 var file = fs.file(href);
@@ -117,6 +117,12 @@
                                 cache: {
                                     enable: false
                                 },
+                                after: function(){
+                                    // var a = $('#vditor a');
+                                    // for(var i = 0; i < a.length; i ++){
+                                    //     console.log(a[i].click)
+                                    // }
+                                },
                                 upload: {
                                     handler: function (files){
                                         if (uploadFun.process) return;
@@ -134,6 +140,7 @@
                                     }
                                 }
                             });
+                            
                         }else{
                             editor = ace.edit('editor');
                             var output;

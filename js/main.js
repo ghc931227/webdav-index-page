@@ -1,24 +1,5 @@
-// 解析url中的参数
-function parseLinkParam(url) {
-    var obj = {};
-    var reg = /[?&][^?&]+=[^?&]+/g;
-    var arr = url.match(reg);
-
-    if(arr){
-        var len = arr.length;
-        for(var i=0;i<len;i++){
-            var item = arr[i];
-            var tempArr = item.substring(1).split('=');
-            var key = tempArr[0];
-            var val = tempArr[1];
-            obj[key] = val;
-        }
-    }
-    return obj;
-}
-
 if(window.location.href.indexOf('root=') != -1){
-    root = parseLinkParam(window.location.href).root;
+    root = new URLSearchParams(window.location.search).get('root');
     curPath = "/";
     setStorage("root", root);
     setStorage("curPath", curPath);
