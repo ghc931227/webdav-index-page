@@ -112,6 +112,10 @@ var WebDAV = {
         xhr.onreadystatechange = function() {
           if(xhr.readyState == 4) { // complete.
             const status = xhr.status.toString();
+            if(status === '401' && !WebDAV._unauthorizedAlerted) {
+              WebDAV._unauthorizedAlerted = true;
+              alert('WebDAV 认证失败 (401): 用户名或密码错误, 或无访问权限');
+            }
             const resbody = body();
             if(resbody || resbody === '') {
               callback(resbody, status);
@@ -149,6 +153,12 @@ var WebDAV = {
     }
   }
 };
+
+// 按局部名查找第一个后代元素(兼容不同命名空间前缀: D:/d:/默认命名空间)
+function firstByLocalName(elem, localName) {
+  var nodes = elem.getElementsByTagNameNS('*', localName);
+  return nodes.length ? nodes[0] : null;
+}
 
 // An Object-oriented API around WebDAV.
 WebDAV.Fs = function(rootUrl) {
@@ -192,21 +202,26 @@ WebDAV.Fs = function(rootUrl) {
           throw('No such directory: ' + doc);
         }
         var result = [];
+        var responses = doc.getElementsByTagNameNS('*', 'response');
         // Start at 1, because the 0th is the same as self.
-        for(var i=1; i< doc.childNodes.length; i++) {
-          var response  = doc.childNodes[i];
-          var href      = response.getElementsByTagName('D:href')[0].firstChild.nodeValue;
+        for(var i=1; i < responses.length; i++) {
+          var response = responses[i];
+          var hrefEl   = firstByLocalName(response, 'href');
+          if(!hrefEl || !hrefEl.firstChild) continue;
+          var href     = hrefEl.firstChild.nodeValue;
           href = href.replace(/\/$/, ''); // Strip trailing slash
-          var propstat      = response.getElementsByTagName('D:propstat')[0];
-          var prop          = propstat.getElementsByTagName('D:prop')[0];
-          var contentlength = prop.getElementsByTagName('D:getcontentlength')[0];
-          if(contentlength){
+          var prop          = firstByLocalName(response, 'prop');
+          var contentlength = prop ? firstByLocalName(prop, 'getcontentlength') : null;
+          if(contentlength && contentlength.firstChild){
             contentlength = contentlength.firstChild.nodeValue;
+          } else {
+            contentlength = null;
           }
-          var lastmodified  = prop.getElementsByTagName('D:getlastmodified')[0].firstChild.nodeValue;
-          var resourcetype  = prop.getElementsByTagName('D:resourcetype')[0];
-          var collection    = resourcetype.getElementsByTagName('D:collection')[0];
-         
+          var lastmodifiedEl = prop ? firstByLocalName(prop, 'getlastmodified') : null;
+          var lastmodified   = (lastmodifiedEl && lastmodifiedEl.firstChild) ? lastmodifiedEl.firstChild.nodeValue : '';
+          var resourcetype   = prop ? firstByLocalName(prop, 'resourcetype') : null;
+          var collection     = resourcetype ? firstByLocalName(resourcetype, 'collection') : null;
+
           var obj;
           if(collection) {
             obj = new fs.dir(href);
@@ -216,8 +231,8 @@ WebDAV.Fs = function(rootUrl) {
           obj.contentlength = parseInt(contentlength) || 0;
           obj.size = fs.sizeFor(contentlength);
           obj.time = (new Date(lastmodified) || new Date(0)).getTime();
-          obj.lastmodified = fs.timeFor(lastmodified);
-          result[i-1] = obj;
+          obj.lastmodified = lastmodified ? fs.timeFor(lastmodified) : '';
+          result.push(obj);
         }
         return result;
       };
@@ -237,18 +252,24 @@ WebDAV.Fs = function(rootUrl) {
     };
 
     this.upload = function(filename, filedata, callback, onload, onerror, onuploadstart, onuploadprogress) {
-      return WebDAV.PUT(this.url + '/' + filename, filedata, callback, onload, onerror, onuploadstart, onuploadprogress);
+      return WebDAV.PUT(this.url + '/' + encodeURIComponent(filename), filedata, callback, onload, onerror, onuploadstart, onuploadprogress);
     };
 
     this.mkdir = function(dirname, callback) {
-      return WebDAV.MKCOL(this.url + '/' + dirname, callback);
+      return WebDAV.MKCOL(this.url + '/' + encodeURIComponent(dirname), callback);
     };
 
     return this;
   };
   
   this.urlFor = function(href) {
-    return (/^http/.test(href) ? href : this.rootUrl + href);
+    if(/^http/.test(href)) return href;
+    // href 为服务器绝对路径时, 去掉与 root 重复的路径部分, 避免路径翻倍
+    var rootPath = this.rootUrl.replace(/^https?:\/\/[^\/]+/, '');
+    if(rootPath && href.indexOf(rootPath) === 0){
+      href = href.substring(rootPath.length);
+    }
+    return this.rootUrl + href;
   };
   
   this.nameFor = function(url) {
@@ -257,22 +278,29 @@ WebDAV.Fs = function(rootUrl) {
 
   this.doctypeFor = function(name) {
     var spl = name.split('.');
-    var ext = spl[spl.length - 1];
-    if(['png', 'jpg', 'jpeg', 'bmp', 'gif', 'webp', 'psd', 'svg', 'tiff'].indexOf(ext.toLowerCase()) !== -1){
+    var ext = spl[spl.length - 1].toLowerCase();
+    if(['png', 'jpg', 'jpeg', 'bmp', 'gif', 'webp', 'psd', 'svg', 'tiff', 'ico'].indexOf(ext) !== -1){
       return 'image';
     }
-    if(['mp3', 'aac', 'wma', 'mp4', 'avi', 'flv', 'mpeg', 'mkv', 'wmv', '3gp', 'mov', 'm4v'].indexOf(ext.toLowerCase()) !== -1){
+    if(['mp4', 'avi', 'flv', 'mpeg', 'mpg', 'mkv', 'wmv', '3gp', 'mov', 'm4v', 'webm', 'ts'].indexOf(ext) !== -1){
       return 'video';
     }
-    if(['txt', 'log', 'json', 'out', 'xml', 'cmd', 'bat', 'ps1', 'sh', 'config', 'md', 'conf', 'ini', 'properties', 'pid', 'yml', 'ymal', 'toml', 'pl', 'vim', 'dict', 'html', 'htm', 'js', 'css', 'sql', 'csv', 'java', 'ahk', 'c', 'cpp', 'h', 'go', 'py', 'license', 'readme'].indexOf(ext.toLowerCase()) !== -1){
+    if(['mp3', 'aac', 'wma', 'flac', 'ogg', 'wav', 'm4a', 'opus', 'ape'].indexOf(ext) !== -1){
+      return 'audio';
+    }
+    if(ext === 'pdf'){
+      return 'pdf';
+    }
+    if(['txt', 'log', 'json', 'out', 'xml', 'cmd', 'bat', 'ps1', 'sh', 'config', 'md', 'markdown', 'conf', 'ini', 'properties', 'pid', 'yml', 'yaml', 'toml', 'pl', 'vim', 'dict', 'html', 'htm', 'js', 'css', 'sql', 'csv', 'java', 'ahk', 'c', 'cpp', 'hpp', 'h', 'go', 'py', 'php', 'rb', 'rs', 'diff', 'license', 'readme', 'env', 'gitignore'].indexOf(ext) !== -1){
       return  'text';
     }
     return '';
   };
 
   this.sizeFor = function(contentlength) {
-    if (isNaN(contentlength)) return '';
-    bytes = parseInt(contentlength);
+    // 目录/缺失 getcontentlength 时返回 null, 由调用方显示 '--'
+    if(contentlength === null || contentlength === undefined || isNaN(contentlength)) return null;
+    var bytes = parseInt(contentlength);
     var symbols = ['bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
     var exp = Math.floor(Math.log(bytes)/Math.log(2));
     if (exp < 1) {

@@ -1,12 +1,33 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-cmn-Hans">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title> WebDAV </title>
+        <title>预览</title>
         <link href="img/favicon.ico" rel="icon" type="image/png" />
         <link href="css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+        <link href="plugins/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css" />
         <link href="vditor/dist/index.css" rel="stylesheet" type="text/css" />
+        <link href="css/viewer.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+            #topbar {
+                position: fixed; top: 0; left: 0; right: 0; height: 48px;
+                display: flex; align-items: center; gap: 8px; padding: 0 12px;
+                background: #fff; border-bottom: 1px solid #e5e5e5; z-index: 1000; box-sizing: border-box;
+            }
+            #fileTitle {
+                flex: 1; font-weight: bold;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            }
+            #content { padding-top: 48px; }
+            #loading { padding: 60px; text-align: center; color: #999; }
+            #viewer-error { padding: 60px; text-align: center; color: #c00; }
+            #unsupported { padding: 60px; text-align: center; color: #888; }
+            #vditor, #editor, #output { display: none; overflow: scroll; }
+            #container { display: none; justify-content: center; align-items: flex-start; text-align: center; }
+            #container .xgplayer { margin: 0 auto !important; }
+        </style>
         <script type="text/javascript" src="js/webdav.js"></script>
         <script type="text/javascript" src="js/jquery.min.js"></script>
         <script type="text/javascript" src="js/bootstrap.min.js"></script>
@@ -14,226 +35,261 @@
         <script src="js/ace.min.js"></script>
         <script src="js/theme-xcode.js"></script>
         <script src="vditor/dist/index.min.js"></script>
-        <style>
-            #editor {
-                overflow: scroll;
-                display: none;
-                position: center;
-            }
-        </style>
+        <script src="js/xgplayer/browser/index.js" type="text/javascript"></script>
+        <script src="js/viewer.min.js" type="text/javascript"></script>
     </head>
-    <body style="border: none">
-        <div style="text-align:center; background-color:beige; height: 25px;"></div>
-
-        <div style="display: none;" id="vditor"></div>
-
-        <div id="container" style="text-align:center; background-color: white; margin: 0 auto;">
-
+    <body>
+        <div id="topbar">
+            <a class="btn btn-default" href="index.html"><i class="fa fa-arrow-left"></i> 返回</a>
+            <span id="fileTitle"></span>
+            <button id="saveBtn" class="btn btn-primary" style="display:none;">保存 (Ctrl+S)</button>
+            <a id="downloadBtn" class="btn btn-default" download>下载</a>
         </div>
 
-        <div id="editor" ></div>
-        <div id="output" ></div>
-
-        <div style="text-align:center;">
-            <button id="saveBtn" class="btn btn-dark" style="display : none;border-radius: 50px;">保存</button>
-            <button class="btn btn-dark" style="border-radius: 50px;"><a id="downloadBtn">下载</a></button>
+        <div id="content">
+            <div id="loading">加载中...</div>
+            <div id="viewer-error" style="display:none;"></div>
+            <div id="container"><div id="player"></div></div>
+            <div id="vditor"></div>
+            <div id="editor"></div>
+            <div id="output"></div>
+            <div id="unsupported" style="display:none;">该文件类型暂不支持在线预览, 可点击右上角"下载"获取文件。</div>
         </div>
 
         <script type="application/javascript">
             var fs = client();
-            var url = window.location.href.replace(window.location.protocol + '//' + window.location.host, '');
+            var href = new URLSearchParams(window.location.search).get('href');
+            var imgDir;
+            var dirty = false;
 
-            if(url.indexOf('?') != -1){
-                var href = new URLSearchParams(window.location.search).get('href');
-                var dirFs = client();
-                var imgDir = dirFs.dir(href.substring(0, href.lastIndexOf('/')) + '/imgs');
+            function markDirty() { dirty = true; }
+
+            window.addEventListener('beforeunload', function (e) {
+                if (dirty) {
+                    e.preventDefault();
+                    e.returnValue = '有未保存的修改, 确定离开?';
+                    return e.returnValue;
+                }
+            });
+
+            // Ctrl+S / Cmd+S 保存
+            $(document).on('keydown', function (e) {
+                if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+                    e.preventDefault();
+                    $('#saveBtn:visible').click();
+                }
+            });
+
+            function hideLoading() { $('#loading').hide(); }
+            function showError(msg) { $('#loading').hide(); $('#viewer-error').text(msg).show(); }
+
+            if (!href) {
+                showError('缺少 href 参数, 请从文件管理页面打开。');
+            } else {
+                imgDir = client().dir(href.substring(0, href.lastIndexOf('/')) + '/imgs');
                 var file = fs.file(href);
-                var name = fs.name;
+                var name = file.name;
+                $('#fileTitle').text(name);
                 $('#downloadBtn').attr('download', name).attr('href', href);
 
-                var documenttype = fs.doctype;
-                if(documenttype === 'image' || documenttype === 'video'){
-                    var iframe = $('<iframe width="100%" style="display: block;border: none;"></iframe>');
-                    iframe.attr('src', href);
-                    iframe.height($(window).height() - 63);
-                    iframe.on('load', function () {
-                        iframe.contents().find('body').css('text-align', 'center');
-                        if(documenttype === 'image'){
-                            iframe.contents().find('img').css('max-width', $(window).width() + 'px');
-                            iframe.contents().find('img').css('max-height', $(window).height() - 64 + 'px');
-                        }
-                        if(documenttype === 'video'){
-                            iframe.contents().find('a').attr('download', name);
-                        }
+                // 只读模式下隐藏保存按钮
+                if (window.READONLY) $('#saveBtn').remove();
+
+                var doctype = file.doctype;
+                if (doctype === 'image') {
+                    var img = $('<img alt="预览">').attr('src', href).css({
+                        'max-width': '100%',
+                        'max-height': ($(window).height() - 48) + 'px',
+                        'display': 'block',
+                        'margin': '0 auto'
                     });
-                    $('#container').append(iframe);
-                }else if(documenttype === 'text'){
-                    var shellmode = false, outfile, lastactive;
-                    if(name === '_davshell.sh' || name === '_davshell.cmd'){
-                        shellmode = true;
-                        outfile = client().file(href.substring(0, href.length - name.length) + '_davshell.out');
-                        $('#saveBtn').text('运行 (Alt-Enter)');
-                        $('#downloadBtn').hide();
-                    }
-                    file.read(function (res, status) {
-                        var editor;
-                        if(name.endsWith('.md')){
-                            $('#vditor').show();
-                            var uploadFun = _UPLOAD;
-                            uploadFun.onloadSuccess = function (){
-                                uploadFun.fileindex ++;
-                                if(uploadFun.fileindex <= uploadFun.fileobjarr.length - 1){
-                                    uploadFun.uploadStart();
-                                }else{
-                                    uploadFun.process = false;
-                                    var insertVal = '';
-                                    for(var i in uploadFun.fileobjarr){
-                                        insertVal += '![](' + imgDir.url + '/' + uploadFun.fileobjarr[i].name + ')\n '
-                                    }
-                                    editor.insertValue(insertVal);
-                                }
-                            };
-                            uploadFun.uploadStart = function (overwrite){
-                                var fileobj = uploadFun.fileobjarr[uploadFun.fileindex];
-                                if(!overwrite){
-                                    WebDAV.PROPFIND(imgDir.url + '/' + fileobj.name, function (resbody, status) {
-                                        if(status !== '404'){
-                                            if(confirm('\'' + fileobj.name + '\' 已存在, 确认覆盖?')){
-                                                uploadFun.uploadStart(true);
-                                            }
-                                        }else{
-                                            uploadFun.uploadStart(true);
-                                        }
-                                    });
-                                }else{
-                                    uploadFun.process = true;
-                                    imgDir.upload(fileobj.name, fileobj, uploadFun.onloadSuccess, uploadFun.onload, uploadFun.onerror, null, null);
-                                }
-                            };
-                            editor = new Vditor('vditor', {
-                                mode: 'wysiwyg',
-                                height: document.documentElement.clientHeight * 0.92,
-                                value: res,
-                                cache: {
-                                    enable: false
-                                },
-                                after: function(){
-                                    // var a = $('#vditor a');
-                                    // for(var i = 0; i < a.length; i ++){
-                                    //     console.log(a[i].click)
-                                    // }
-                                },
-                                upload: {
-                                    handler: function (files){
-                                        if (uploadFun.process) return;
-                                        try{
-                                            var _url = imgDir.url;
-                                            imgDir.url = _url.substring(0, _url.lastIndexOf('/'));
-                                            imgDir.mkdir('imgs');
-                                            imgDir.url = _url;
-                                        }catch (e){
-                                            console.log('imgs目录已存在');
-                                        }
-                                        uploadFun.fileobjarr = files;
-                                        uploadFun.fileindex = 0;
-                                        uploadFun.uploadStart();
-                                    }
-                                }
-                            });
-                            
-                        }else{
-                            editor = ace.edit('editor');
-                            var output;
-                            editor.setFontSize(16);
-                            editor.setTheme('ace/theme/xcode');
-                            editor.setValue(res, 1);
-                            editor.focus();
-
-                            $('#editor').css('height', shellmode ? (($(window).height() - 63) / 2) : ($(window).height() - 63));
-                            $('#editor').show();
-
-                            if(shellmode){
-                                output = ace.edit('output');
-                                output.setTheme("ace/theme/xcode");
-                                editor.setFontSize(14);
-                                $('#output').css('height', ($(window).height() - 63) / 2);
-                                $('#output').show();
-
-                                editor.commands.addCommand({
-                                    name: 'runshell',
-                                    bindKey: { win: 'Alt-Enter', mac: 'Enter' },
-                                    exec: function (editor) {
-                                        $('#saveBtn').trigger('click');
-                                    },
-                                    readOnly: false
-                                });
-
-                                $(document).on('click mousemove keypress', function () {
-                                    lastactive = new Date().getTime();
-                                });
-
-                                var counter = 0;
-                                var outres;
-                                setInterval(function () {
-                                    counter ++;
-                                    var nowTime = new Date().getTime();
-                                    if(nowTime - lastactive < 20 * 1000 || (counter * 400) % (20 * 1000) == 0){
-                                        outfile.read(function (res, status) {
-                                            if(status == 200 && outres !== res){
-                                                outres = res;
-                                                var formatout = formatLogText(res);
-                                                output.setValue(formatout, 1);
-                                                output.renderer.scrollToRow(formatout.split('\n').length + 1);
-                                            }
-                                        }, false);
-                                    }
-                                }, 400);
-                            }
-                        }
-                        $('#saveBtn').show();
-                        $('#saveBtn').click(function () {
-                            file.write(editor.getValue().replace(/\r/g, ''), function () {
-                                file.read(function (res, status) {
-                                    lastFetch = 0;
-                                    editor.setValue(res.trim(), 1);
-                                    editor.focus();
-                                });
-                            });
-                        });
-                    })
+                    img.on('load', function () {
+                        hideLoading();
+                        // Viewer.js 存在时支持点击缩放/旋转, 否则普通展示
+                        if (window.Viewer) new Viewer(img[0], { navbar: false, title: [1, true], keyboard: true });
+                    });
+                    img.on('error', function () { showError('图片加载失败'); });
+                    $('#content').append(img);
+                } else if (doctype === 'video') {
+                    $('#container').css('display', 'flex');
+                    hideLoading();
+                    new Player({
+                        id: 'player',
+                        url: href,
+                        height: $(window).height() - 48,
+                        fitVideoSize: 'fixHeight',
+                        download: false,
+                        pip: true,
+                        playbackRate: [0.5, 0.75, 1, 1.5, 2]    //传入倍速可选数组
+                    });
+                } else if (doctype === 'audio') {
+                    $('#container').css('display', 'flex');
+                    hideLoading();
+                    $('#container').css('padding-top', '60px').append(
+                        $('<audio controls>').css({ 'width': '90%', 'max-width': '720px' }).attr('src', href)
+                    );
+                } else if (doctype === 'pdf') {
+                    var pdfiframe = $('<iframe width="100%" style="display:block;border:none;">').attr('src', href);
+                    pdfiframe.height($(window).height() - 48);
+                    pdfiframe.on('load', hideLoading);
+                    $('#content').append(pdfiframe);
+                } else if (doctype === 'text') {
+                    loadText(file, name, href);
+                } else {
+                    hideLoading();
+                    $('#unsupported').show();
                 }
             }
 
-            function formatLogText(text) {
-                // if(!text) return '';
-                // var arr = text.split('\n');
-                // var arr2 = [];
-                // for(var i in arr){
-                //     var line = arr[i];
-                //     if(line.startsWith('[download]')){
-                //         var lastarr;
-                //         if(arr2.length == 0 || typeof arr2[arr2.length - 1] === 'string'){
-                //             lastarr = [];
-                //             arr2.push(lastarr);
-                //         }else{
-                //             lastarr = arr2[arr2.length - 1];
-                //         }
-                //         lastarr.push(line);
-                //     }else{
-                //         arr2.push(line);
-                //     }
-                // }
-                // var restext = '';
-                // for(var i in arr2){
-                //     if(typeof arr2[i] === 'string'){
-                //         restext += arr2[i] + '\n';
-                //     }else{
-                //         var linearr = arr2[i];
-                //         restext += linearr[linearr.length - 1] + '\n';
-                //     }
-                // }
-                // return restext;
-                return text;
+            // ---- 文本 / Markdown 编辑 (含 _davshell 运行模式) ----
+            function loadText(file, name, href) {
+                var shellmode = false, outfile;
+                if (name === '_davshell.sh' || name === '_davshell.cmd') {
+                    shellmode = true;
+                    outfile = client().file(href.substring(0, href.length - name.length) + '_davshell.out');
+                    $('#saveBtn').text('运行 (Alt-Enter)');
+                    $('#downloadBtn').hide();
+                }
+                file.read(function (res, status) {
+                    if (status !== '200') {
+                        showError('文件读取失败 (HTTP ' + status + ')');
+                        return;
+                    }
+                    hideLoading();
+                    var editor;
+                    if (name.endsWith('.md')) {
+                        $('#vditor').show();
+                        var uploadFun = _UPLOAD;
+                        uploadFun.onloadSuccess = function (){
+                            uploadFun.fileindex ++;
+                            if(uploadFun.fileindex <= uploadFun.fileobjarr.length - 1){
+                                uploadFun.uploadStart();
+                            }else{
+                                uploadFun.process = false;
+                                var insertVal = '';
+                                for(var i in uploadFun.fileobjarr){
+                                    insertVal += '![](' + imgDir.url + '/' + encodeURIComponent(uploadFun.fileobjarr[i].name) + ')\n '
+                                }
+                                editor.insertValue(insertVal);
+                            }
+                        };
+                        uploadFun.uploadStart = function (overwrite){
+                            var fileobj = uploadFun.fileobjarr[uploadFun.fileindex];
+                            if(!overwrite){
+                                WebDAV.PROPFIND(imgDir.url + '/' + encodeURIComponent(fileobj.name), function (resbody, st) {
+                                    if(st !== '404'){
+                                        if(confirm('\'' + fileobj.name + '\' 已存在, 确定覆盖? [取消=跳过]')){
+                                            uploadFun.uploadStart(true);
+                                        }else{
+                                            uploadFun.onloadSuccess(); // 跳过该文件
+                                        }
+                                    }else{
+                                        uploadFun.uploadStart(true);
+                                    }
+                                });
+                            }else{
+                                uploadFun.process = true;
+                                imgDir.upload(fileobj.name, fileobj, uploadFun.onloadSuccess, uploadFun.onload, uploadFun.onerror, null, null);
+                            }
+                        };
+                        editor = new Vditor('vditor', {
+                            mode: 'wysiwyg',
+                            height: document.documentElement.clientHeight - 100,
+                            value: res,
+                            cache: {
+                                enable: false
+                            },
+                            after: function(){
+                                $('#vditor').on('input', markDirty);
+                            }
+                        });
+                    }else{
+                        editor = ace.edit('editor');
+                        var output;
+                        editor.setFontSize(16);
+                        editor.setTheme('ace/theme/xcode');
+                        try {
+                            var mode = aceModeFor(name);
+                            if (mode) editor.getSession().setMode('ace/mode/' + mode);
+                        } catch (e) { /* 无对应 mode 文件时保持纯文本 */ }
+                        editor.setValue(res, 1);
+                        editor.focus();
+                        editor.on('change', markDirty);
+
+                        $('#editor').css('height', shellmode ? (($(window).height() - 48) / 2) : ($(window).height() - 48));
+                        $('#editor').show();
+
+                        if(shellmode){
+                            output = ace.edit('output');
+                            output.setTheme("ace/theme/xcode");
+                            output.setReadOnly(true);
+                            editor.setFontSize(14);
+                            $('#output').css('height', ($(window).height() - 48) / 2);
+                            $('#output').show();
+
+                            editor.commands.addCommand({
+                                name: 'runshell',
+                                bindKey: { win: 'Alt-Enter', mac: 'Enter' },
+                                exec: function (editor) {
+                                    $('#saveBtn').trigger('click');
+                                },
+                                readOnly: false
+                            });
+
+                            var refresh = true;
+                            $(document).on('click', function () {
+                                refresh = true;
+                            });
+
+                            var counter = 0;
+                            var outres;
+                            setInterval(function () {
+                                if (document.hidden) return; // 页面不可见时暂停轮询
+                                counter ++;
+                                if(counter > 10000) counter = 0;
+                                if(refresh === true || counter % 50 === 0){ // 主动点击刷新 或 每 20s 刷新一次
+                                    if(refresh === true) refresh = false;
+                                    outfile.read(function (res, status) {
+                                        if(status == 200 && outres !== res){
+                                            outres = res;
+                                            output.setValue(res, 1);
+                                            output.renderer.scrollToRow(res.split('\n').length + 1);
+                                        }
+                                    });
+                                }
+                            }, 400);
+                        }
+                    }
+                    $('#saveBtn').show();
+                    $('#saveBtn').click(function () {
+                        file.write(editor.getValue().replace(/\r/g, ''), function (res2, status2) {
+                            if (status2 !== '201' && status2 !== '204' && status2 !== '200') {
+                                alert('保存失败 (HTTP ' + status2 + ')');
+                                return;
+                            }
+                            file.read(function (r2, s2) {
+                                if (s2 === '200') {
+                                    editor.setValue(r2.trim(), 1);
+                                    editor.focus();
+                                }
+                                dirty = false;
+                            });
+                        });
+                    });
+                });
+            }
+
+            // 按扩展名映射 ACE 语法高亮 mode (mode 文件不存在时 ace 自动回退纯文本)
+            function aceModeFor(name) {
+                if (typeof ace === 'undefined') return null;
+                var ext = (name.split('.').pop() || '').toLowerCase();
+                var map = {
+                    js: 'javascript', json: 'json', html: 'html', htm: 'html', css: 'css',
+                    xml: 'xml', sql: 'sql', sh: 'sh', bash: 'sh', bat: 'sh', cmd: 'sh', ps1: 'sh',
+                    py: 'python', java: 'java', c: 'c_cpp', h: 'c_cpp', cpp: 'c_cpp', hpp: 'c_cpp',
+                    go: 'golang', md: 'markdown', yml: 'yaml', yaml: 'yaml', php: 'php', rb: 'ruby'
+                };
+                return map[ext] || null;
             }
         </script>
 

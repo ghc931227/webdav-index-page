@@ -27,7 +27,9 @@ var i18nData = {
         "Download": "下载",
         "Paste": "粘贴",
         "Cancel": "取消",
-        "Sort": "排序"
+        "Sort": "排序",
+        "Jump": "跳转",
+        "Hidden": "隐藏"
     },
     "en": {
         "Select All": "Select All",
@@ -44,7 +46,9 @@ var i18nData = {
         "Download": "Download",
         "Paste": "Paste",
         "Cancel": "Cancel",
-        "Sort": "Sort"
+        "Sort": "Sort",
+        "Jump": "Jump",
+        "Hidden": "Hidden"
     }
 };
 function changeLang(lang){

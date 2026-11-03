@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-cmn-Hans">
 
 
 <head>
@@ -40,6 +40,46 @@
         }
         .file-control {
             width: 30px!important;
+        }
+        .file-thumb {
+            border-radius: 4px;
+        }
+        /* 统一列表图标框尺寸, 保证行高一致 */
+        .file-list .media-block > .media-left {
+            font-size: 2.2em;
+            width: 1.4em;
+            line-height: 1.2em;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .file-list .media-block > .media-left .fa {
+            line-height: 1.2em;
+        }
+        .file-list .media-block > .media-left .file-thumb {
+            width: 1.15em;
+            height: 1.15em;
+            object-fit: cover;
+            vertical-align: middle;
+        }
+        #file-wrapper {
+            position: relative;
+            width: 240px;
+            flex-shrink: 0;
+        }
+        #file-wrapper .fa-search {
+            position: absolute;
+            left: 10px;
+            top: 9px;
+            color: #aaa;
+        }
+        #file-filter {
+            padding-left: 30px;
+            height: 34px;
+        }
+        /* 手机窄屏下收缩过滤框, 给面包屑留空间 */
+        @media (max-width: 767px) {
+            #file-wrapper { width: 150px; }
+            #file-filter { font-size: 12px; padding-left: 26px; }
         }
         #demo-nifty-settings {
             display: none;
@@ -84,6 +124,61 @@
             // toolbar
             changeToolbar();
 
+            // 只读模式: 隐藏所有写操作按钮
+            if(window.READONLY){
+                var writeFns = ['mkdir', 'newfile', 'uploadFiles', 'copyfiles', 'cutfiles', 'rename', 'deleteFiles', 'paste'];
+                $('#navbar .btn, #footer .btn').each(function(){
+                    var oc = $(this).attr('onclick') || '';
+                    for(var i in writeFns){
+                        if(oc.indexOf(writeFns[i]) !== -1){ $(this).hide(); break; }
+                    }
+                });
+            }
+
+            // 隐藏文件按钮初始状态
+            updateHiddenBtn();
+
+            // 目录内过滤
+            $('#file-filter').on('input', applyFilter);
+
+            // 拖拽上传(支持文件夹, 平铺上传到当前目录)
+            $(document).on('dragover', function (e) { e.preventDefault(); });
+            $(document).on('drop', function (e) {
+                e.preventDefault();
+                var dt = e.originalEvent.dataTransfer;
+                if(!dt || window.READONLY) return;
+                if(_UPLOAD.process) return;
+                collectFilesFromDrop(dt, function (fileArr) {
+                    if(fileArr.length) uploadFiles(fileArr);
+                });
+            });
+
+            // 键盘快捷键: Ctrl+A 全选 / Delete 删除 / F2 重命名 / Esc 取消
+            $(document).on('keydown', function (e) {
+                var tag = (e.target.tagName || '').toLowerCase();
+                if(tag === 'input' || tag === 'textarea' || $(e.target).is('[contenteditable]')) return;
+                if(e.ctrlKey || e.metaKey){
+                    if(e.key.toLowerCase() === 'a'){
+                        e.preventDefault();
+                        changeToolbar('show-when-select');
+                        $('.checkbox').removeClass('hide').prop('checked', true);
+                    }
+                    return;
+                }
+                switch(e.key){
+                    case 'Delete':
+                        if($('#file-list .checkbox:checked').length) deleteFiles();
+                        break;
+                    case 'F2':
+                        e.preventDefault();
+                        rename();
+                        break;
+                    case 'Escape':
+                        cancel();
+                        break;
+                }
+            });
+
             // sort
             $('.fa-sort-amount').addClass('hide');
             var sortItem = getStorage('sortItem');
@@ -115,10 +210,14 @@
 <div id="container" class="effect aside-float aside-bright mainnav-sm navbar-fixed footer-fixed">
     <header id="navbar" style="background-color: #FFFFFF">
         <div style="padding-left: 2em;padding-right: 2em;">
-            <div class="bord-btm pad-ver">
-                <ol class="breadcrumb">
+            <div class="bord-btm pad-ver" style="display: flex; align-items: center; gap: 10px;">
+                <ol class="breadcrumb" style="flex: 1; margin: 0; min-width: 0; overflow-x: auto; white-space: nowrap;">
 
                 </ol>
+                <div id="file-wrapper">
+                    <i class="fa fa-search"></i>
+                    <input id="file-filter" class="form-control" placeholder="输入关键字过滤当前目录..." autocomplete="off">
+                </div>
             </div>
             <div class="hidden-xs hidden-sm">
                 <div class="btn-group btn-group-justified show-when-custom">
@@ -138,6 +237,16 @@
                         <i class="faicon fa fa-sort"></i>
                         <br><span class="btn-remark" i18n-key="Sort">Sort</span>
                     </div>
+                    <div class="btn bord-no btn-label" onclick="jumpTo();">
+                        <i class="faicon fa fa-location-arrow"></i>
+                        <br><span class="btn-remark" i18n-key="Jump">Jump</span>
+                    </div>
+                    <!-- 隐藏文件开关(暂时停用)
+                    <div class="btn bord-no btn-label toggle-dot" onclick="toggleHidden();">
+                        <i class="faicon fa fa-eye-slash"></i>
+                        <br><span class="btn-remark" i18n-key="Hidden">Hidden</span>
+                    </div>
+                    -->
                 </div>
 
                 <div class="btn-group btn-group-justified show-when-new">
@@ -198,6 +307,10 @@
                         <i class="faicon fa fa-trash-o"></i>
                         <br><span class="btn-remark" i18n-key="Delete">Delete</span>
                     </div>
+                    <div class="btn bord-no btn-label" onclick="getUrls();">
+                        <i class="faicon fa fa-link"></i>
+                        <br><span class="btn-remark" i18n-key="Url">Url</span>
+                    </div>
                     <div class="btn bord-no btn-label" onclick="cancel();">
                         <i class="faicon fa fa-ban"></i>
                         <br><span class="btn-remark" i18n-key="Cancel">Cancel</span>
@@ -221,7 +334,7 @@
         </div>
 
     </header>
-    <div id="page-content" style="padding-top: 6em;">
+    <div id="page-content" style="padding-top: 8em;">
 
         <div class="panel">
             <div class="pad-all file-manager">
@@ -255,6 +368,16 @@
                 <i class="faicon fa fa-sort"></i>
                 <br><span class="btn-remark" i18n-key="Sort">Sort</span>
             </div>
+            <div class="btn bord-no btn-label" onclick="jumpTo();">
+                <i class="faicon fa fa-location-arrow"></i>
+                <br><span class="btn-remark" i18n-key="Jump">Jump</span>
+            </div>
+            <!-- 隐藏文件开关(暂时停用)
+            <div class="btn bord-no btn-label toggle-dot" onclick="toggleHidden();">
+                <i class="faicon fa fa-eye-slash"></i>
+                <br><span class="btn-remark" i18n-key="Hidden">Hidden</span>
+            </div>
+            -->
         </div>
 
         <div class="btn-group btn-group-justified show-when-new">
@@ -314,6 +437,10 @@
             <div class="btn bord-no btn-label" onclick="deleteFiles();">
                 <i class="faicon fa fa-trash-o"></i>
                 <br><span class="btn-remark" i18n-key="Delete">Delete</span>
+            </div>
+            <div class="btn bord-no btn-label" onclick="getUrls();">
+                <i class="faicon fa fa-link"></i>
+                <br><span class="btn-remark" i18n-key="Url">Url</span>
             </div>
             <div class="btn bord-no btn-label" onclick="cancel();">
                 <i class="faicon fa fa-ban"></i>
@@ -387,27 +514,30 @@
         var loadDir = function (dir) {
             curPath = dir.url;
             curDir = dir;
-            setStorage('curPath', curPath.replace(window.location.protocol + '//' + window.location.host, ''));
+            setStorage('curPath', curPath.replace(root, ''));
             dir.children(function (children) {
+                if(getStorage('hideDot') === 'true'){
+                    children = children.filter(function (c) { return c.name.charAt(0) !== '.'; });
+                }
+                children.sort(sortFor);
                 $('#file-list').empty();
                 $('#file-list').append($('#up-li').clone(true));
-                children.sort(sortFor);
-                setStorage('collection', JSON.stringify(children));
                 for (var i in children) {
                     var row = getRow(children[i]);
                     $('#file-list').append(row);
                 }
+                applyFilter();
             });
 
             $('.breadcrumb').empty();
-            var splpath = unescape(curPath.replace(window.location.origin, '')).split('/');
+            var splpath = decodeUriSafe(curPath.replace(root, '')).split('/');
             var lipath = '';
             for(var i in splpath){
                 lipath += '/' + splpath[i];
                 if(lipath == '/') lipath = '';
-                var li = $('<li path="' + lipath + '"><a>' + (splpath[i] || '/') + '</a></li>');
+                var li = $('<li>').attr('path', encodeURIComponent(lipath)).append($('<a>').text(splpath[i] || '/'));
                 li.on('click', function (){
-                    loadDir(fs.dir(window.location.origin + $(this).attr('path')));
+                    loadDir(fs.dir(root + decodeUriSafe($(this).attr('path'))));
                 });
                 $('.breadcrumb').append(li);
             }
@@ -416,25 +546,32 @@
         var getRow = function (obj) {
             var namestr = obj.name;
             if (namestr.length > 45) namestr = namestr.substring(0, 43) + '...';
+            namestr = escapeHtml(namestr);
             var row;
             if(obj.type == 'dir'){
                 row = $(
                     folderlihtml.replace('$namestr', namestr)
-                        .replace('$name', obj.name)
+                        .replace('$name', escapeHtml(obj.name))
                         .replace('$size', obj.size || '--')
                         .replace('$lastmodified', obj.lastmodified)
                         .replace('"folder-li"', '""')
                 );
             }
             else if(obj.type == 'file'){
+                var iconHtml = iconFor(obj.name, obj.doctype);
+                if(obj.doctype === 'image'){
+                    iconHtml = '<img class="file-thumb" loading="lazy" alt="" src="' + escapeHtml(obj.url) + '">';
+                }
                 row = $(
-                    filelihtml.replace('$namestr', namestr)
-                        .replace('$name', obj.name)
+                    filelihtml.replace('<i class="demo-psi-file text-success"></i>', iconHtml)
+                        .replace('$namestr', namestr)
+                        .replace('$name', escapeHtml(obj.name))
                         .replace('$size', obj.size || '--')
                         .replace('$lastmodified', obj.lastmodified)
                         .replace('"file-li"', '""')
                 );
             }
+            row.attr('data-name', obj.name);
             row[0].fsdata = obj;
             row.on('click', function (event) {
                 if(curToolbar == 'show-when-select'){
@@ -447,7 +584,7 @@
                     if (fsdata.type === 'file') {
                         url = fsdata.url;
                         if(!!fsdata.doctype){
-                            url = 'viewer.html?href=' + url;
+                            url = 'viewer.html?href=' + encodeURIComponent(url) + (window.READONLY ? '&readonly=1' : '');
                         }
                         window.open(url);
                     } else if (fsdata.type === 'dir') {
@@ -464,6 +601,7 @@
         }
 
         var uploadFiles = function (fileArr) {
+            if(window.READONLY){ alert('当前为只读模式, 无法上传'); return; }
             if (_UPLOAD.process) return;
             _UPLOAD.fileobjarr = fileArr;
             _UPLOAD.fileindex = 0;
@@ -473,7 +611,10 @@
 
         var deleteFiles = function () {
             var fileArr = getCheckedFiles();
-            if (fileArr.length > 0 && confirm('确认删除文件吗?')) {
+            if (fileArr.length === 0) return;
+            var names = fileArr.slice(0, 20).map(function (f) { return f.name; }).join('\n');
+            var more = fileArr.length > 20 ? ('\n... 等共 ' + fileArr.length + ' 项') : '';
+            if (confirm('确认删除以下文件吗?\n' + names + more)) {
                 _DELETE.fileobjarr = fileArr;
                 _DELETE.fileindex = 0;
                 _DELETE.deleteStart();
@@ -494,6 +635,7 @@
                     alert('文件夹名称非法或文件夹已存在!');
                     mkdir();
                 });
+                changeToolbar();
             }
         };
 
@@ -508,6 +650,7 @@
                     alert('文件名非法或文件已存在!');
                     newfile();
                 });
+                changeToolbar();
             }
         };
 
@@ -544,28 +687,28 @@
 
         var rename = function () {
             var fileArr = getCheckedFiles();
-            if (fileArr.length != 1) {
+            if (fileArr.length !== 1) {
                 return;
-            } else {
-                var file = fileArr[0];
-                var newName = prompt('请输入新文件名:', file.name);
-                if (newName) {
-                    file.name = newName;
-                    fileArr[0] = file;
-                }
-                _MVCP.action = 'MOVE';
-                _MVCP.fileobjarr = fileArr;
-                _MVCP.fileindex = 0;
-                _MVCP.doaction(true);
-                changeToolbar();
             }
+            var file = fileArr[0];
+            var newName = prompt('请输入新文件名:', file.name);
+            if (!newName || newName === file.name) {
+                return;
+            }
+            file.name = newName;
+            _MVCP.action = 'MOVE';
+            _MVCP.fileobjarr = [file];
+            _MVCP.fileindex = 0;
+            _MVCP.doaction(); // 统一走冲突检查: 目标已存在时询问覆盖/跳过
+            changeToolbar();
+            $('.checkbox').prop('checked', false);
+            $('.checkbox').addClass('hide');
         };
 
         var goUp = function () {
-            var pathspl = curPath.replace(window.location.protocol + '//' + window.location.host, '').split('/');
+            var pathspl = curPath.replace(root, '').split('/');
             pathspl.pop();
-            curPath = window.location.protocol + '//' + window.location.host + pathspl.join('/');
-            loadDir(fs.dir(curPath));
+            loadDir(fs.dir(root + pathspl.join('/')));
         };
 
         var cancel = function (){
@@ -575,12 +718,116 @@
             $('.checkbox').addClass('hide');
         };
 
+        var getUrls = function(){
+            var fileArr = getCheckedFiles();
+            var urls = '';
+            for(var i in fileArr){
+                var file = fileArr[i];
+                if(file.type === 'file'){
+                    urls += file.url + "\n";
+                }
+            }
+            if(urls) copyToClipboard(urls);
+            changeToolbar();
+            $('.checkbox').prop('checked', false);
+            $('.checkbox').addClass('hide');
+        }
+
+        var copyToClipboard = function (text) {
+            let textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            try {
+                textarea.select();
+                document.execCommand('copy');
+            } catch (error) {
+
+            }
+            document.body.removeChild(textarea);
+        }
+
         function getCheckedFiles() {
             var fileArr = [];
             $('#file-list .checkbox:checked').each(function () {
-                fileArr.push($(this).parent().parent()[0].fsdata);
+                var li = $(this).closest('li.file');
+                // 被过滤框隐藏的行不参与批量操作
+                if(li.length && li.attr('data-name') !== undefined && !li.is(':visible')) return;
+                fileArr.push(li[0].fsdata);
             });
             return fileArr;
+        }
+
+        // ---- 新增功能 ----
+        var applyFilter = function () {
+            var kw = ($('#file-filter').val() || '').toLowerCase();
+            $('#file-list li.file').each(function () {
+                var name = $(this).attr('data-name');
+                if(name === undefined){ $(this).show(); return; } // 返回上级目录项始终显示
+                $(this).toggle(name.toLowerCase().indexOf(kw) !== -1);
+            });
+        };
+
+        var updateHiddenBtn = function () {
+            $('.toggle-dot').toggleClass('text-danger', getStorage('hideDot') === 'true');
+        };
+
+        var toggleHidden = function () {
+            var active = getStorage('hideDot') !== 'true';
+            setStorage('hideDot', active ? 'true' : 'false');
+            updateHiddenBtn();
+            loadDir(fs.dir(curPath));
+        };
+
+        var jumpTo = function () {
+            var p = prompt('输入要跳转的路径 (相对 WebDAV 根目录):', decodeUriSafe(curPath.replace(root, '')) || '/');
+            if(!p) return;
+            p = p.trim();
+            if(!p) return;
+            if(!/^https?:\/\//i.test(p) && p.charAt(0) !== '/') p = '/' + p;
+            loadDir(fs.dir(/^https?:\/\//i.test(p) ? p : root + p));
+        };
+
+        // 收集拖拽的文件/文件夹(文件夹递归展开, 平铺上传到当前目录)
+        function collectFilesFromDrop(dataTransfer, callback) {
+            var items = dataTransfer.items;
+            var entries = [];
+            if(items && items.length && items[0].webkitGetAsEntry){
+                for(var i = 0; i < items.length; i++){
+                    var en = items[i].webkitGetAsEntry();
+                    if(en) entries.push(en);
+                }
+            }
+            if(!entries.length){
+                callback(Array.prototype.slice.call(dataTransfer.files || []));
+                return;
+            }
+            var results = [], pending = 0, finished = false;
+            var check = function () {
+                if(pending === 0 && !finished){
+                    finished = true;
+                    callback(results);
+                }
+            };
+            var walk = function (entry) {
+                pending++;
+                if(entry.isFile){
+                    entry.file(function (f) { results.push(f); pending--; check(); }, function () { pending--; check(); });
+                }else if(entry.isDirectory){
+                    var reader = entry.createReader();
+                    var readBatch = function () {
+                        reader.readEntries(function (subs) {
+                            if(subs.length === 0){ pending--; check(); return; }
+                            for(var i = 0; i < subs.length; i++) walk(subs[i]);
+                            readBatch();
+                        }, function () { pending--; check(); });
+                    };
+                    readBatch();
+                }else{
+                    pending--; check();
+                }
+            };
+            for(var j = 0; j < entries.length; j++) walk(entries[j]);
+            check();
         }
     </script>
 </div>
