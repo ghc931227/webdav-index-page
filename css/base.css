@@ -1,0 +1,102 @@
+/* ============================================================
+   base.css — 布局与结构基座
+   替代 nifty 模板: 只提供页面骨架(固定顶栏/底栏/内容区)和
+   HTML 中用到的结构工具类, 颜色与外观交给 custom.css。
+   ============================================================ */
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+}
+
+/* ---------------- 固定顶栏/底栏与内容区 ---------------- */
+#navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1030;
+    background-color: #fff;
+}
+#footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4.5em;
+    padding: 0;
+    z-index: 1030;
+}
+#page-content {
+    padding: 8em 16px 32px;
+}
+/* 窄屏: 顶栏只剩面包屑行, 底部被 footer 遮挡需留空 */
+@media (max-width: 767px) {
+    #page-content { padding-top: 4.5em; }
+}
+@media (max-width: 991px) {
+    #page-content { padding-bottom: 6.5em; }
+}
+
+/* ---------------- 结构工具类 ---------------- */
+.bord-btm {
+    border-bottom: 1px solid var(--border-soft);
+}
+.pad-ver {
+    padding-top: 12px;
+    padding-bottom: 12px;
+}
+.pad-all {
+    padding: 16px;
+}
+.bord-no {
+    border: none!important;
+}
+.fixed-fluid:after {
+    content: "";
+    display: table;
+    clear: both;
+}
+.fluid {
+    width: 100%;
+}
+
+/* ---------------- 文件列表结构 ----------------
+   行内: 复选框列 + 内容区 flex 排布, 元信息靠右 */
+.file-list {
+    list-style: none;
+    margin: 0;
+    padding-left: 0;
+}
+.file-list > li {
+    display: flex;
+    align-items: center;
+}
+.file-list .file-control {
+    width: 30px;
+    flex-shrink: 0;
+}
+/* 复选框隐藏(非选择模式)时整列收起, 不留空白 */
+.file-list .file-control:has(> .checkbox.hide) {
+    display: none;
+}
+.file-list .file-attach-icon {
+    display: none;
+}
+.file-list .file-details {
+    display: block;
+    overflow: hidden;
+    flex: 1;
+    min-width: 0;
+}
+.file-list .file-name {
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+/* 移动端底栏按钮: 图标+文字上下居中 */
+#footer .btn-label {
+    text-align: center;
+}

@@ -10,11 +10,10 @@
     <title>File Manager</title>
 
     <link href="css/bootstrap.min.css" rel="stylesheet">
-    <link href="css/nifty.min.css" rel="stylesheet">
-    <link href="css/nifty-demo-icons.min.css" rel="stylesheet">
+    <link href="css/base.css?v=20261104b" rel="stylesheet">
     <link href="plugins/font-awesome/css/font-awesome.min.css" rel="stylesheet">
     <link href="plugins/pace/pace.min.css" rel="stylesheet">
-    <link href="css/custom.css?v=20261103b" rel="stylesheet">
+    <link href="css/custom.css?v=20261104a" rel="stylesheet">
 
     <style>
         .faicon {
@@ -31,10 +30,6 @@
         }
         #footer .btn {
             padding: 12px 12px!important;
-        }
-        #footer {
-            height: 4.5em;
-            padding: 0;
         }
         .file-control {
             width: 30px!important;
@@ -60,17 +55,12 @@
             #file-wrapper { width: 150px; }
             #file-filter { font-size: 12px; padding-left: 26px; }
         }
-        #demo-nifty-settings {
-            display: none;
-        }
     </style>
 
     <script src="js/long-press-event.min.js"></script>
     <script src="plugins/pace/pace.min.js"></script>
     <script src="js/jquery.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
-    <script src="js/nifty.min.js"></script>
-    <script src="js/nifty-demo.min.js"></script>
     <script src="js/i18n.js"></script>
     <script type="text/javascript" src="js/webdav.js"></script>
     <script type="text/javascript" src="js/main.js"></script>
@@ -191,7 +181,7 @@
 
 <body>
 <input id="file" class="hide" type="file" onchange="uploadFiles($(this)[0].files);" multiple="multiple"/>
-<div id="container" class="effect aside-float aside-bright mainnav-sm navbar-fixed footer-fixed">
+<div id="container">
     <header id="navbar">
         <div style="padding-left: 2em;padding-right: 2em;">
             <div class="bord-btm pad-ver" style="display: flex; align-items: center; gap: 10px;">
@@ -304,7 +294,7 @@
         </div>
 
     </header>
-    <div id="page-content" style="padding-top: 8em;">
+    <div id="page-content">
 
         <div class="panel">
             <div class="pad-all file-manager">
@@ -461,7 +451,7 @@
             <div class="file-attach-icon"></div>
             <span href="#" class="file-details">
                 <div class="media-block">
-                    <div class="media-left"><i class="demo-psi-folder"></i></div>
+                    <div class="media-left"><i class="fa fa-folder"></i></div>
                     <div class="media-body">
                         <p class="file-name" title="$name">$namestr</p>
                     </div>
@@ -477,7 +467,7 @@
             <div class="file-attach-icon"></div>
             <span href="#" class="file-details">
                 <div class="media-block">
-                    <div class="media-left"><i class="demo-psi-file text-success"></i></div>
+                    <div class="media-left"><i class="fa fa-file-o text-success"></i></div>
                     <div class="media-body">
                         <p class="file-name" title="$name">$namestr</p>
                     </div>
@@ -546,7 +536,7 @@
                     iconHtml = '<img class="file-thumb" loading="lazy" alt="" src="' + escapeHtml(obj.url) + '">';
                 }
                 row = $(
-                    filelihtml.replace('<i class="demo-psi-file text-success"></i>', iconHtml)
+                    filelihtml.replace('<i class="fa fa-file-o text-success"></i>', iconHtml)
                         .replace('$namestr', namestr)
                         .replace('$name', escapeHtml(obj.name))
                         .replace('$size', obj.size || '--')
@@ -752,11 +742,17 @@
 
         var applyFilter = function () {
             var kw = ($('#file-filter').val() || '').toLowerCase();
+            var visible = 0;
             $('#file-list li.file').each(function () {
                 var name = $(this).attr('data-name');
                 if(name === undefined){ $(this).show(); return; } // 返回上级目录项始终显示
-                $(this).toggle(name.toLowerCase().indexOf(kw) !== -1);
+                var show = name.toLowerCase().indexOf(kw) !== -1;
+                $(this).toggle(show);
+                if(show) visible++;
             });
+            // 目录为空或过滤后无匹配时显示空态块
+            var hasFiles = $('#file-list li.file[data-name]').length > 0;
+            $('#empty-dir').toggleClass('hide', hasFiles && visible > 0);
         };
 
         var updateHiddenBtn = function () {

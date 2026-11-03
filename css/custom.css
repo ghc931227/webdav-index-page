@@ -1,6 +1,6 @@
 /* ============================================================
    custom.css — 换肤层
-   在 bootstrap/nifty 之后加载, 只做外观覆盖, 不改 HTML 结构。
+   在 bootstrap/base 之后加载, 只做外观覆盖, 不改 HTML 结构。
    主题色/圆角/间距集中在这里的 CSS 变量, 想换主题改这一处即可。
    ============================================================ */
 
@@ -48,30 +48,21 @@ body {
     background-color: var(--bg-surface);
     box-shadow: var(--shadow-bar);
 }
-#navbar .bord-btm {
-    border-bottom-color: var(--border-soft)!important;
-}
 #navbar .breadcrumb {
     font-size: 13px;
+    background-color: transparent;
+    padding: 2px 0;
+    border-radius: 0;
 }
 /* 隐藏面包屑横向滚动条, 靠滚轮/拖动查看 */
 #navbar .breadcrumb::-webkit-scrollbar { display: none; }
 #navbar .breadcrumb { scrollbar-width: none; }
-/* 分隔符用输入的 "/", 必须完整重置 nifty 用边框画箭头的方式
-   (content:"" + 右上边框方块 + rotate(45deg)), 否则斜杠会在旋转方块里变形 */
+/* 分隔符: 根面包屑本身是 "/", 第二枚前会拼成 "//", 用空格代替 */
 #navbar .breadcrumb > li + li:before {
     content: "/";
     color: var(--text-sub);
-    border: none;
-    width: auto;
-    height: auto;
-    display: inline;
-    position: static;
-    transform: none;
-    margin: 0;
     padding: 0 4px;
 }
-/* 根面包屑本身是 "/", 第二枚前的分隔符会拼成 "//", 用空格代替 */
 #navbar .breadcrumb > li:nth-child(2):before {
     content: "\00a0";
     padding: 0;
@@ -200,9 +191,6 @@ body {
     border-radius: var(--radius-row);
     transition: background-color .12s;
 }
-.file-list > li:nth-child(odd) {
-    background-color: transparent;
-}
 .file-list > li:hover {
     background-color: var(--bg-hover);
 }
@@ -214,19 +202,20 @@ body {
 .file-list .media-block > .media-left {
     width: 32px;
     height: 32px;
-    line-height: 32px;
-    /* 覆盖 nifty 的 padding-right: 10px, 否则 border-box 下字形不在块内居中 */
+    /* 用 flex 双轴居中, line-height 居中受图标字体度量影响会有纵向偏差 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* 覆盖 bootstrap 的 padding-right: 10px, 否则 border-box 下字形不在块内居中 */
     padding: 0;
     flex-shrink: 0;
     font-size: 15px;
-    text-align: center;
-    vertical-align: middle;
     background: var(--surface-muted);
     border-radius: var(--radius-thumb);
     color: var(--icon-muted);
 }
 .file-list .media-block > .media-left .fa {
-    line-height: 32px;
+    line-height: 1;   /* 行高归一, 让图标盒子贴合字形, 交给 flex 居中 */
     color: inherit;   /* 图标统一单色, 类型靠扩展名/缩略图区分 */
 }
 .file-list .media-block > .media-left .file-thumb {
@@ -238,7 +227,7 @@ body {
     vertical-align: middle;
 }
 
-/* 复选框列: 与图标块同高并垂直居中, 覆盖 nifty 的 float + line-height:3em */
+/* 复选框列: 与图标块同高并垂直居中 */
 .file-list > li .file-control {
     display: flex;
     align-items: center;
@@ -319,14 +308,11 @@ body {
 .file-list.grid-view .media-block > .media-left {
     width: 64px;
     height: 64px;
-    line-height: 64px;
     font-size: 30px;
     border-radius: 12px;
 }
-.file-list.grid-view .media-block > .media-left .fa,
-.file-list.grid-view .media-block > .media-left [class^="demo-"],
-.file-list.grid-view .media-block > .media-left [class*=" demo-"] {
-    line-height: 64px;
+.file-list.grid-view .media-block > .media-left .fa {
+    line-height: 1;
 }
 .file-list.grid-view .media-block > .media-left .file-thumb {
     width: 64px;
