@@ -17,7 +17,7 @@ if(rootParam !== null && rootParam !== ''){
     // 显式指定的 root 直接信任, 不做探测(跨域探测会因 CORS 误判)
     root = rootParam.trim().replace(/\/+$/, '');
     setStorage('root', root);
-    setStorage('curPath', '/');
+    setStorage('curPath', '');
 }
 
 // 探测 url 是否为可用的 WebDAV 服务端点

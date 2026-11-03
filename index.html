@@ -14,7 +14,7 @@
     <link href="css/nifty-demo-icons.min.css" rel="stylesheet">
     <link href="plugins/font-awesome/css/font-awesome.min.css" rel="stylesheet">
     <link href="plugins/pace/pace.min.css" rel="stylesheet">
-    <link href="css/custom.css" rel="stylesheet">
+    <link href="css/custom.css?v=20261103b" rel="stylesheet">
 
     <style>
         .faicon {
@@ -92,7 +92,7 @@
             }
         }
 
-        var curPath = getStorage('curPath') || '';
+        var curPath = (getStorage('curPath') || '').replace(/\/+$/, '');
         var curDir;
         var fs = client();
 
@@ -512,7 +512,8 @@
             });
 
             $('.breadcrumb').empty();
-            var splpath = decodeUriSafe(curPath.replace(root, '')).split('/');
+            // 去掉尾部斜杠, 避免根路径(/)切出两个空段生成两枚 "/" 面包屑
+            var splpath = decodeUriSafe(curPath.replace(root, '')).replace(/\/+$/, '').split('/');
             var lipath = '';
             for(var i in splpath){
                 lipath += '/' + splpath[i];

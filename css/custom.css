@@ -57,9 +57,24 @@ body {
 /* 隐藏面包屑横向滚动条, 靠滚轮/拖动查看 */
 #navbar .breadcrumb::-webkit-scrollbar { display: none; }
 #navbar .breadcrumb { scrollbar-width: none; }
+/* 分隔符用输入的 "/", 必须完整重置 nifty 用边框画箭头的方式
+   (content:"" + 右上边框方块 + rotate(45deg)), 否则斜杠会在旋转方块里变形 */
 #navbar .breadcrumb > li + li:before {
-    content: "›";
+    content: "/";
     color: var(--text-sub);
+    border: none;
+    width: auto;
+    height: auto;
+    display: inline;
+    position: static;
+    transform: none;
+    margin: 0;
+    padding: 0 4px;
+}
+/* 根面包屑本身是 "/", 第二枚前的分隔符会拼成 "//", 用空格代替 */
+#navbar .breadcrumb > li:nth-child(2):before {
+    content: "\00a0";
+    padding: 0;
 }
 #navbar .breadcrumb > .active {
     color: var(--text-main);
