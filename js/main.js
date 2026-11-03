@@ -61,13 +61,13 @@ function detectRoot() {
 }
 
 function askRoot() {
-    var tip = '未检测到可用的 WebDAV 服务, 请输入 WebDAV 地址\n(示例: ' + window.location.origin + '/webdav)';
+    var tip = t('No WebDAV').replace('{url}', window.location.origin + '/webdav');
     for(;;){
         var input = prompt(tip);
         if(input === null) return null;
         var url = normalizeDavUrl(input);
         if(url && probeDav(url)) return url;
-        alert('该地址不可用或不是 WebDAV 服务, 请重新输入');
+        alert(t('Invalid WebDAV'));
     }
 }
 
@@ -159,7 +159,7 @@ var _UPLOAD = {
             $('.loading').text((_UPLOAD.fileindex + 1) + '/' + _UPLOAD.fileobjarr.length + ' ' + percent);
             $('.loading').css('background-color', '#cbcfd0');
             if(event.loaded == event.total){
-                $('.loading').text('上传文件');
+                $('.loading').text(t('Upload file'));
                 $('.loading').css('background-color', '#5fdaff');
             }
         }
@@ -176,7 +176,7 @@ var _UPLOAD = {
     },
 
     onerror: function(err){
-        alert('上传失败!');
+        alert(t('Upload failed'));
     },
 
     onload : function(res){
@@ -188,7 +188,7 @@ var _UPLOAD = {
         if(!overwrite){
             WebDAV.PROPFIND(curDir.url + '/' + encodeURIComponent(fileobj.name), function (resbody, status) {
                 if(status !== '404'){
-                    if(confirm('\'' + fileobj.name + '\' 已存在, 确定覆盖? [取消=跳过]')){
+                    if(confirm('\'' + fileobj.name + t('Overwrite confirm'))){
                         _UPLOAD.uploadStart(true);
                     }else{
                         _UPLOAD.onloadSuccess(); // 跳过该文件, 继续下一个
@@ -252,7 +252,7 @@ var _MVCP = {
         if(!overwrite){
             WebDAV.PROPFIND(dest, function (resbody, status) {
                 if(status !== '404'){
-                    if(confirm('\'' + fileobj.name + '\' 已存在, 确定覆盖? [取消=跳过]')){
+                    if(confirm('\'' + fileobj.name + t('Overwrite confirm'))){
                         _MVCP.doaction(true);
                     }else{
                         _MVCP.onloadSuccess(); // 跳过该文件
@@ -268,7 +268,7 @@ var _MVCP = {
             }
             var done = function (res, status) {
                 if(status !== '201'){
-                    alert('操作失败 (HTTP ' + status + '): ' + fileobj.name);
+                    alert(t('Op failed').replace('{s}', status).replace('{n}', fileobj.name));
                 }
                 _MVCP.onloadSuccess(res, status);
             };

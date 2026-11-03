@@ -120,6 +120,7 @@
             // i18n
             $('.btn-remark').addClass('i18n-key');
             changeLang();
+            updateLangBtn();
 
             // toolbar
             changeToolbar();
@@ -216,8 +217,9 @@
                 </ol>
                 <div id="file-wrapper">
                     <i class="fa fa-search"></i>
-                    <input id="file-filter" class="form-control" placeholder="输入关键字过滤当前目录..." autocomplete="off">
+                    <input id="file-filter" class="form-control" data-i18n-ph="Filter ph" placeholder="输入关键字过滤当前目录..." autocomplete="off">
                 </div>
+                <button class="btn btn-default" onclick="changeLang();" id="langBtn" style="flex-shrink: 0; min-width: 52px;">EN</button>
             </div>
             <div class="hidden-xs hidden-sm">
                 <div class="btn-group btn-group-justified show-when-custom">
@@ -601,7 +603,7 @@
         }
 
         var uploadFiles = function (fileArr) {
-            if(window.READONLY){ alert('当前为只读模式, 无法上传'); return; }
+            if(window.READONLY){ alert(t('Readonly upload')); return; }
             if (_UPLOAD.process) return;
             _UPLOAD.fileobjarr = fileArr;
             _UPLOAD.fileindex = 0;
@@ -613,8 +615,8 @@
             var fileArr = getCheckedFiles();
             if (fileArr.length === 0) return;
             var names = fileArr.slice(0, 20).map(function (f) { return f.name; }).join('\n');
-            var more = fileArr.length > 20 ? ('\n... 等共 ' + fileArr.length + ' 项') : '';
-            if (confirm('确认删除以下文件吗?\n' + names + more)) {
+            var more = fileArr.length > 20 ? (t('More suffix').replace('{n}', fileArr.length)) : '';
+            if (confirm(t('Delete confirm') + names + more)) {
                 _DELETE.fileobjarr = fileArr;
                 _DELETE.fileindex = 0;
                 _DELETE.deleteStart();
@@ -625,14 +627,14 @@
         };
 
         var mkdir = function () {
-            var dirname = prompt('请输入文件夹名称', '新文件夹');
+            var dirname = prompt(t('Input folder name'), t('Default folder name'));
             if (dirname) {
                 curDir.mkdir(dirname, function (res, status) {
                     if (status == 201) {
                         loadDir(fs.dir(curPath));
                         return;
                     }
-                    alert('文件夹名称非法或文件夹已存在!');
+                    alert(t('Invalid folder name'));
                     mkdir();
                 });
                 changeToolbar();
@@ -640,14 +642,14 @@
         };
 
         var newfile = function () {
-            var filename = prompt('请输入文件名称', '文件');
+            var filename = prompt(t('Input file name'), t('Default file name'));
             if (filename) {
                 curDir.upload(filename, '', function (res, status) {
                     if (status == 201) {
                         loadDir(fs.dir(curPath));
                         return;
                     }
-                    alert('文件名非法或文件已存在!');
+                    alert(t('Invalid file name'));
                     newfile();
                 });
                 changeToolbar();
@@ -691,7 +693,7 @@
                 return;
             }
             var file = fileArr[0];
-            var newName = prompt('请输入新文件名:', file.name);
+            var newName = prompt(t('Input new name'), file.name);
             if (!newName || newName === file.name) {
                 return;
             }
@@ -771,6 +773,11 @@
             $('.toggle-dot').toggleClass('text-danger', getStorage('hideDot') === 'true');
         };
 
+        // 语言切换按钮: 显示另一种语言的名称
+        var updateLangBtn = function () {
+            $('#langBtn').text(getLang() === 'zh-CN' ? 'EN' : '中文');
+        };
+
         var toggleHidden = function () {
             var active = getStorage('hideDot') !== 'true';
             setStorage('hideDot', active ? 'true' : 'false');
@@ -779,7 +786,7 @@
         };
 
         var jumpTo = function () {
-            var p = prompt('输入要跳转的路径 (相对 WebDAV 根目录):', decodeUriSafe(curPath.replace(root, '')) || '/');
+            var p = prompt(t('Jump prompt'), decodeUriSafe(curPath.replace(root, '')) || '/');
             if(!p) return;
             p = p.trim();
             if(!p) return;

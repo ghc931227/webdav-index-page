@@ -28,6 +28,7 @@
             #container { display: none; justify-content: center; align-items: flex-start; text-align: center; }
             #container .xgplayer { margin: 0 auto !important; }
         </style>
+        <script type="text/javascript" src="js/i18n.js"></script>
         <script type="text/javascript" src="js/webdav.js"></script>
         <script type="text/javascript" src="js/jquery.min.js"></script>
         <script type="text/javascript" src="js/bootstrap.min.js"></script>
@@ -40,20 +41,21 @@
     </head>
     <body>
         <div id="topbar">
-            <a class="btn btn-default" href="index.html"><i class="fa fa-arrow-left"></i> 返回</a>
+            <a class="btn btn-default" href="index.html"><i class="fa fa-arrow-left"></i> <span class="i18n-key" i18n-key="Back">Back</span></a>
             <span id="fileTitle"></span>
-            <button id="saveBtn" class="btn btn-primary" style="display:none;">保存 (Ctrl+S)</button>
-            <a id="downloadBtn" class="btn btn-default" download>下载</a>
+            <button id="saveBtn" class="btn btn-primary" style="display:none;"><span class="i18n-key" i18n-key="Save (Ctrl+S)">Save (Ctrl+S)</span></button>
+            <a id="downloadBtn" class="btn btn-default" download><span class="i18n-key" i18n-key="Download">Download</span></a>
+            <button class="btn btn-default" onclick="changeLang();" id="langBtn" style="min-width: 52px;">EN</button>
         </div>
 
         <div id="content">
-            <div id="loading">加载中...</div>
+            <div id="loading"><span class="i18n-key" i18n-key="Loading">Loading...</span></div>
             <div id="viewer-error" style="display:none;"></div>
             <div id="container"><div id="player"></div></div>
             <div id="vditor"></div>
             <div id="editor"></div>
             <div id="output"></div>
-            <div id="unsupported" style="display:none;">该文件类型暂不支持在线预览, 可点击右上角"下载"获取文件。</div>
+            <div id="unsupported" style="display:none;"><span class="i18n-key" i18n-key="Unsupported">Unsupported</span></div>
         </div>
 
         <script type="application/javascript">
@@ -62,12 +64,17 @@
             var imgDir;
             var dirty = false;
 
+            // i18n: 应用当前语言 (自动检测/持久化), 维护语言切换按钮文案
+            function updateLangBtn() { $('#langBtn').text(getLang() === 'zh-CN' ? 'EN' : '中文'); }
+            updateLangBtn();
+            applyI18n();
+
             function markDirty() { dirty = true; }
 
             window.addEventListener('beforeunload', function (e) {
                 if (dirty) {
                     e.preventDefault();
-                    e.returnValue = '有未保存的修改, 确定离开?';
+                    e.returnValue = t('Unsaved leave');
                     return e.returnValue;
                 }
             });
@@ -84,7 +91,7 @@
             function showError(msg) { $('#loading').hide(); $('#viewer-error').text(msg).show(); }
 
             if (!href) {
-                showError('缺少 href 参数, 请从文件管理页面打开。');
+                showError(t('Missing href'));
             } else {
                 imgDir = client().dir(href.substring(0, href.lastIndexOf('/')) + '/imgs');
                 var file = fs.file(href);
@@ -108,7 +115,7 @@
                         // Viewer.js 存在时支持点击缩放/旋转, 否则普通展示
                         if (window.Viewer) new Viewer(img[0], { navbar: false, title: [1, true], keyboard: true });
                     });
-                    img.on('error', function () { showError('图片加载失败'); });
+                    img.on('error', function () { showError(t('Img load failed')); });
                     $('#content').append(img);
                 } else if (doctype === 'video') {
                     $('#container').css('display', 'flex');
@@ -147,12 +154,12 @@
                 if (name === '_davshell.sh' || name === '_davshell.cmd') {
                     shellmode = true;
                     outfile = client().file(href.substring(0, href.length - name.length) + '_davshell.out');
-                    $('#saveBtn').text('运行 (Alt-Enter)');
+                    $('#saveBtn').text(t('Run (Alt+Enter)'));
                     $('#downloadBtn').hide();
                 }
                 file.read(function (res, status) {
                     if (status !== '200') {
-                        showError('文件读取失败 (HTTP ' + status + ')');
+                        showError(t('Load failed').replace('{s}', status));
                         return;
                     }
                     hideLoading();
@@ -178,7 +185,7 @@
                             if(!overwrite){
                                 WebDAV.PROPFIND(imgDir.url + '/' + encodeURIComponent(fileobj.name), function (resbody, st) {
                                     if(st !== '404'){
-                                        if(confirm('\'' + fileobj.name + '\' 已存在, 确定覆盖? [取消=跳过]')){
+                                        if(confirm('\'' + fileobj.name + t('Overwrite confirm'))){
                                             uploadFun.uploadStart(true);
                                         }else{
                                             uploadFun.onloadSuccess(); // 跳过该文件
@@ -264,7 +271,7 @@
                     $('#saveBtn').click(function () {
                         file.write(editor.getValue().replace(/\r/g, ''), function (res2, status2) {
                             if (status2 !== '201' && status2 !== '204' && status2 !== '200') {
-                                alert('保存失败 (HTTP ' + status2 + ')');
+                                alert(t('Save failed').replace('{s}', status2));
                                 return;
                             }
                             file.read(function (r2, s2) {
