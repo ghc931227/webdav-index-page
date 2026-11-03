@@ -1,0 +1,164 @@
+/* ============================================================
+   custom.css — 换肤层
+   在 bootstrap/nifty 之后加载, 只做外观覆盖, 不改 HTML 结构。
+   主题色/圆角/间距集中在这里的 CSS 变量, 想换主题改这一处即可。
+   ============================================================ */
+
+:root {
+    --brand: #4A6CF7;              /* 主色 (Alist 同款蓝紫系) */
+    --brand-dark: #3B5BDB;
+    --brand-soft: #EAEEFF;         /* 主色浅底, 用于选中态 */
+    --text-main: #2A3242;          /* 主文字 */
+    --text-sub: #8A94A6;           /* 次要文字/元信息 */
+    --icon-muted: #98A2B3;         /* 图标默认色 */
+    --surface-muted: #F2F4F8;      /* 图标块/浅底 */
+    --bg-hover: rgba(74, 108, 247, 0.08);
+    --shadow-bar: 0 1px 4px rgba(16, 24, 40, 0.08);
+    --radius-row: 8px;
+    --radius-thumb: 6px;
+}
+
+/* ---------------- 顶栏 ---------------- */
+#navbar {
+    background-color: #FFFFFF;
+    box-shadow: var(--shadow-bar);
+}
+#navbar .breadcrumb {
+    font-size: 13px;
+}
+/* 隐藏面包屑横向滚动条, 靠滚轮/拖动查看 */
+#navbar .breadcrumb::-webkit-scrollbar { display: none; }
+#navbar .breadcrumb { scrollbar-width: none; }
+#navbar .breadcrumb > li + li:before {
+    content: "›";
+    color: var(--text-sub);
+}
+#navbar .breadcrumb > .active {
+    color: var(--text-main);
+    font-weight: 600;
+}
+#navbar .breadcrumb a {
+    color: var(--text-sub);
+}
+#navbar .breadcrumb a:hover {
+    color: var(--brand);
+    text-decoration: none;
+}
+
+/* 过滤框聚焦跟随主色 */
+#file-filter:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 2px var(--bg-hover);
+}
+
+/* ---------------- 工具栏按钮 ----------------
+   去掉 2015 后台模板的实心块感, 改为安静图标钮:
+   常态无背景, hover 浮现主色浅底 */
+#navbar .btn,
+#footer .btn {
+    background: transparent;
+    color: var(--text-main);
+    border-radius: var(--radius-row);
+    transition: background-color .12s, color .12s;
+}
+#navbar .btn:hover,
+#footer .btn:hover {
+    background: var(--bg-hover);
+    color: var(--brand);
+}
+#navbar .btn .faicon,
+#footer .btn .faicon {
+    color: var(--icon-muted);
+}
+#navbar .btn:hover .faicon,
+#footer .btn:hover .faicon {
+    color: var(--brand);
+}
+#navbar .btn-remark,
+#footer .btn-remark {
+    color: var(--text-sub);
+}
+#navbar .btn:hover .btn-remark,
+#footer .btn:hover .btn-remark {
+    color: var(--brand);
+}
+
+/* ---------------- 移动端 footer ---------------- */
+#footer {
+    background-color: #FFFFFF;
+    box-shadow: 0 -1px 4px rgba(16, 24, 40, 0.08);
+}
+
+/* ---------------- 内容面板 ---------------- */
+#page-content .panel {
+    border: none;
+    border-radius: 10px;
+    box-shadow: var(--shadow-bar);
+}
+
+/* ---------------- 文件列表行 ----------------
+   去斑马纹, 行改为独立圆角块, hover 主色浅底 */
+.file-list {
+    padding: 8px 0;
+}
+.file-list > li {
+    padding: 8px 12px;
+    margin: 2px 0;
+    border-radius: var(--radius-row);
+    transition: background-color .12s;
+}
+.file-list > li:nth-child(odd) {
+    background-color: transparent;
+}
+.file-list > li:hover {
+    background-color: var(--bg-hover);
+}
+.file-list > li.selected {
+    background-color: var(--brand-soft);
+}
+
+/* 图标/缩略图统一 32px 圆角块 */
+.file-list .media-block > .media-left {
+    width: 32px;
+    height: 32px;
+    line-height: 32px;
+    font-size: 15px;
+    text-align: center;
+    vertical-align: middle;
+    background: var(--surface-muted);
+    border-radius: var(--radius-thumb);
+    color: var(--icon-muted);
+}
+.file-list .media-block > .media-left .fa {
+    line-height: 32px;
+    color: inherit;   /* 图标统一单色, 类型靠扩展名/缩略图区分 */
+}
+.file-list .media-block > .media-left .file-thumb {
+    display: block;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-thumb);
+    object-fit: cover;
+    vertical-align: middle;
+}
+
+/* 名称与右侧元信息 */
+.file-list .file-name {
+    color: var(--text-main);
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 18px;
+}
+.file-list .file-meta {
+    padding: 3px 0 0 12px;
+    white-space: nowrap;
+}
+.file-list .file-meta small,
+.file-list .media-body small {
+    color: var(--text-sub);
+    font-size: 12px;
+}
+/* 窄屏隐藏右侧元信息, 给文件名留空间 */
+@media (max-width: 767px) {
+    .file-list .file-meta { display: none; }
+}

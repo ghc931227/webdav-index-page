@@ -47,7 +47,11 @@ var i18nData = {
         "Save failed": "保存失败 (HTTP {s})",
         "Unsaved leave": "有未保存的修改, 确定离开?",
         "Preview title": "预览",
-        "Switch to EN": "EN"
+        "Switch to EN": "EN",
+        "Just now": "刚刚",
+        " minutes ago": " 分钟前",
+        " hours ago": " 小时前",
+        " days ago": " 天前"
     },
     "en": {
         "Select All": "Select All",
@@ -96,7 +100,11 @@ var i18nData = {
         "Save failed": "Failed to save (HTTP {s})",
         "Unsaved leave": "You have unsaved changes. Leave anyway?",
         "Preview title": "Preview",
-        "Switch to EN": "中文"
+        "Switch to EN": "中文",
+        "Just now": "Just now",
+        " minutes ago": " minutes ago",
+        " hours ago": " hours ago",
+        " days ago": " days ago"
     }
 };
 

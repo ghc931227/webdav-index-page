@@ -110,6 +110,21 @@ function extOf(name) {
     return (String(name).split('.').pop() || '').toLowerCase();
 }
 
+// 相对时间: 1 小时内/当天/一周内用相对表述, 更早显示日期
+function relTime(s) {
+    if (!s) return '';
+    var d = new Date(String(s).replace(' ', 'T'));
+    var time = d.getTime();
+    if (isNaN(time)) return String(s);
+    var diff = Date.now() - time;
+    if (diff < 0) diff = 0;
+    if (diff < 60e3) return t('Just now');
+    if (diff < 36e5) return Math.floor(diff / 60e3) + t(' minutes ago');
+    if (diff < 864e5) return Math.floor(diff / 36e5) + t(' hours ago');
+    if (diff < 7 * 864e5) return Math.floor(diff / 864e5) + t(' days ago');
+    return String(s).slice(0, 10);
+}
+
 // 按文件类型返回图标 HTML
 function iconFor(name, doctype) {
     var ext = extOf(name);

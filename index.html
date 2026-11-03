@@ -14,6 +14,7 @@
     <link href="css/nifty-demo-icons.min.css" rel="stylesheet">
     <link href="plugins/font-awesome/css/font-awesome.min.css" rel="stylesheet">
     <link href="plugins/pace/pace.min.css" rel="stylesheet">
+    <link href="css/custom.css" rel="stylesheet">
 
     <style>
         .faicon {
@@ -41,26 +42,7 @@
         .file-control {
             width: 30px!important;
         }
-        .file-thumb {
-            border-radius: 4px;
-        }
-        /* 统一列表图标框尺寸, 保证行高一致 */
-        .file-list .media-block > .media-left {
-            font-size: 2.2em;
-            width: 1.4em;
-            line-height: 1.2em;
-            text-align: center;
-            vertical-align: middle;
-        }
-        .file-list .media-block > .media-left .fa {
-            line-height: 1.2em;
-        }
-        .file-list .media-block > .media-left .file-thumb {
-            width: 1.15em;
-            height: 1.15em;
-            object-fit: cover;
-            vertical-align: middle;
-        }
+        /* 列表行/图标/缩略图/元信息外观统一在 css/custom.css 维护 */
         #file-wrapper {
             position: relative;
             width: 240px;
@@ -209,7 +191,7 @@
 <body>
 <input id="file" class="hide" type="file" onchange="uploadFiles($(this)[0].files);" multiple="multiple"/>
 <div id="container" class="effect aside-float aside-bright mainnav-sm navbar-fixed footer-fixed">
-    <header id="navbar" style="background-color: #FFFFFF">
+    <header id="navbar">
         <div style="padding-left: 2em;padding-right: 2em;">
             <div class="bord-btm pad-ver" style="display: flex; align-items: center; gap: 10px;">
                 <ol class="breadcrumb" style="flex: 1; margin: 0; min-width: 0; overflow-x: auto; white-space: nowrap;">
@@ -486,8 +468,8 @@
                     <div class="media-left"><i class="demo-psi-folder"></i></div>
                     <div class="media-body">
                         <p class="file-name" title="$name">$namestr</p>
-                        <small>$lastmodified | $size</small>
                     </div>
+                    <div class="media-right file-meta"><small>$lastmodified · $size</small></div>
                 </div>
             </span>
         </li>
@@ -502,8 +484,8 @@
                     <div class="media-left"><i class="demo-psi-file text-success"></i></div>
                     <div class="media-body">
                         <p class="file-name" title="$name">$namestr</p>
-                        <small>$lastmodified | $size</small>
                     </div>
+                    <div class="media-right file-meta"><small>$lastmodified · $size</small></div>
                 </div>
             </span>
         </li>
@@ -555,7 +537,7 @@
                     folderlihtml.replace('$namestr', namestr)
                         .replace('$name', escapeHtml(obj.name))
                         .replace('$size', obj.size || '--')
-                        .replace('$lastmodified', obj.lastmodified)
+                        .replace('$lastmodified', relTime(obj.lastmodified))
                         .replace('"folder-li"', '""')
                 );
             }
@@ -569,7 +551,7 @@
                         .replace('$namestr', namestr)
                         .replace('$name', escapeHtml(obj.name))
                         .replace('$size', obj.size || '--')
-                        .replace('$lastmodified', obj.lastmodified)
+                        .replace('$lastmodified', relTime(obj.lastmodified))
                         .replace('"file-li"', '""')
                 );
             }
