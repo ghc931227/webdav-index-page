@@ -160,6 +160,32 @@ var sortFor = function (a, b) {
 };
 
 // ---- 上传 ----
+
+// 上传结束后清理 UI: 恢复按钮底色, 隐藏进度 toast
+function restoreLoadingBtns() {
+    $('.loading').css('background-color', '');
+    hideUploadToast();
+    if (typeof applyI18n === 'function') applyI18n();
+}
+
+// 上传进度 toast: 显示/更新/隐藏 (元素在 index.html 末尾, viewer.html 无此元素时操作为空)
+function showUploadToast() {
+    $('#upload-toast').removeClass('hide');
+    updateUploadToast();
+}
+
+function updateUploadToast() {
+    var fileobj = _UPLOAD.fileobjarr[_UPLOAD.fileindex];
+    $('#upload-toast-name').text(fileobj ? fileobj.name : '');
+    $('#upload-toast-count').text((_UPLOAD.fileindex + 1) + '/' + _UPLOAD.fileobjarr.length);
+    $('#upload-toast-percent').text('');
+    $('#upload-toast-progress').css('width', '0%');
+}
+
+function hideUploadToast() {
+    $('#upload-toast').addClass('hide');
+}
+
 var _UPLOAD = {
 
     process: false,
@@ -170,13 +196,9 @@ var _UPLOAD = {
 
     onprogress : function (event) {
         if (event.lengthComputable) {
-            var percent = parseInt(event.loaded/event.total * 100) + '%';
-            $('.loading').text((_UPLOAD.fileindex + 1) + '/' + _UPLOAD.fileobjarr.length + ' ' + percent);
-            $('.loading').css('background-color', '#cbcfd0');
-            if(event.loaded == event.total){
-                $('.loading').text(t('Upload file'));
-                $('.loading').css('background-color', '#5fdaff');
-            }
+            var percent = parseInt(event.loaded/event.total * 100);
+            $('#upload-toast-progress').css('width', percent + '%');
+            $('#upload-toast-percent').text(percent + '%');
         }
     },
 
@@ -184,13 +206,16 @@ var _UPLOAD = {
         loadDir(fs.dir(curPath));
         _UPLOAD.fileindex ++;
         if(_UPLOAD.fileindex <= _UPLOAD.fileobjarr.length - 1){
+            updateUploadToast();
             _UPLOAD.uploadStart();
         }else{
             _UPLOAD.process = false;
+            restoreLoadingBtns();
         }
     },
 
     onerror: function(err){
+        restoreLoadingBtns();
         alert(t('Upload failed'));
     },
 
@@ -214,6 +239,7 @@ var _UPLOAD = {
             });
         }else{
             _UPLOAD.process = true;
+            showUploadToast();
             curDir.upload(fileobj.name, fileobj, _UPLOAD.onloadSuccess, _UPLOAD.onload, _UPLOAD.onerror, null, _UPLOAD.onprogress);
         }
     }

@@ -29,9 +29,6 @@
         .input-show {
             display: inline-block!important;
         }
-        #navbar .btn {
-            padding: 6px 6px!important;
-        }
         #footer .btn {
             padding: 12px 12px!important;
         }
@@ -52,7 +49,7 @@
             position: absolute;
             left: 10px;
             top: 9px;
-            color: #aaa;
+            color: var(--text-sub);
         }
         #file-filter {
             padding-left: 30px;
@@ -87,9 +84,10 @@
             var arr = ['show-when-custom', 'show-when-select', 'show-when-new', 'show-when-sort', 'show-when-mvcp'];
             for(var i in arr){
                 if(arr[i] == toolbar){
-                    $('.' + arr[i]).show();
+                    // 用 '' 交回样式表控制, 桌面组是 inline-flex, 移动端组是 BS3 table
+                    $('.' + arr[i]).css('display', '');
                 }else{
-                    $('.' + arr[i]).hide();
+                    $('.' + arr[i]).css('display', 'none');
                 }
             }
         }
@@ -120,6 +118,9 @@
 
             // 隐藏文件按钮初始状态
             updateHiddenBtn();
+
+            // 视图模式恢复(列表/网格)
+            applyView();
 
             // 目录内过滤
             $('#file-filter').on('input', applyFilter);
@@ -204,114 +205,99 @@
                 <button class="btn btn-default" onclick="changeLang();" id="langBtn" style="flex-shrink: 0; min-width: 52px;">EN</button>
             </div>
             <div class="hidden-xs hidden-sm">
-                <div class="btn-group btn-group-justified show-when-custom">
-                    <div class="btn bord-no btn-label" onclick="changeToolbar('show-when-select');$('.checkbox').prop('checked', true);$('.checkbox').removeClass('hide');">
-                        <i class="faicon fa fa-square-o"></i>
-                        <br><span class="btn-remark" i18n-key="Select All">Select All</span>
+                <!-- 常态: 主操作「上传」+ 紧凑图标组 -->
+                <div class="btn-group show-when-custom">
+                    <div class="btn bord-no btn-brand loading" onclick="$(this).css('background-color', '');$('#file').val('');$('#file').click();" data-i18n-title="Upload" title="Upload">
+                        <i class="faicon fa fa-cloud-upload"></i><span class="btn-remark" i18n-key="Upload">Upload</span>
                     </div>
-                    <div class="btn bord-no btn-label" onclick="loadDir(fs.dir(curPath));">
-                        <i class="faicon fa fa-refresh"></i>
-                        <br><span class="btn-remark" i18n-key="Refresh">Refresh</span>
-                    </div>
-                    <div class="btn bord-no btn-label" onclick="changeToolbar('show-when-new');">
+                    <div class="btn bord-no" onclick="changeToolbar('show-when-new');" data-i18n-title="New" title="New">
                         <i class="faicon fa fa-plus-square-o"></i>
-                        <br><span class="btn-remark" i18n-key="New">New</span>
                     </div>
-                    <div class="btn bord-no btn-label" onclick="changeToolbar('show-when-sort');">
+                    <div class="btn bord-no" onclick="changeToolbar('show-when-select');$('.checkbox').prop('checked', true);$('.checkbox').removeClass('hide');" data-i18n-title="Select All" title="Select All">
+                        <i class="faicon fa fa-square-o"></i>
+                    </div>
+                    <div class="btn bord-no" onclick="loadDir(fs.dir(curPath));" data-i18n-title="Refresh" title="Refresh">
+                        <i class="faicon fa fa-refresh"></i>
+                    </div>
+                    <div class="btn bord-no" onclick="changeToolbar('show-when-sort');" data-i18n-title="Sort" title="Sort">
                         <i class="faicon fa fa-sort"></i>
-                        <br><span class="btn-remark" i18n-key="Sort">Sort</span>
                     </div>
-                    <div class="btn bord-no btn-label" onclick="jumpTo();">
+                    <div class="btn bord-no" onclick="jumpTo();" data-i18n-title="Jump" title="Jump">
                         <i class="faicon fa fa-location-arrow"></i>
-                        <br><span class="btn-remark" i18n-key="Jump">Jump</span>
+                    </div>
+                    <div class="btn bord-no" onclick="toggleView();" data-i18n-title="View" title="View">
+                        <i class="faicon fa fa-th-large"></i>
                     </div>
                     <!-- 隐藏文件开关(暂时停用)
-                    <div class="btn bord-no btn-label toggle-dot" onclick="toggleHidden();">
+                    <div class="btn bord-no toggle-dot" onclick="toggleHidden();" data-i18n-title="Hidden" title="Hidden">
                         <i class="faicon fa fa-eye-slash"></i>
-                        <br><span class="btn-remark" i18n-key="Hidden">Hidden</span>
                     </div>
                     -->
                 </div>
 
-                <div class="btn-group btn-group-justified show-when-new">
-                    <div class="btn bord-no btn-label" onclick="mkdir();">
+                <div class="btn-group show-when-new">
+                    <div class="btn bord-no" onclick="mkdir();" data-i18n-title="New Folder" title="New Folder">
                         <i class="faicon fa fa-folder-o"></i>
-                        <br><span class="btn-remark" i18n-key="New Folder">New Folder</span>
                     </div>
-                    <div class="btn bord-no btn-label" onclick="newfile();">
+                    <div class="btn bord-no" onclick="newfile();" data-i18n-title="New File" title="New File">
                         <i class="faicon fa fa-file-o"></i>
-                        <br><span class="btn-remark" i18n-key="New File">New File</span>
                     </div>
-                    <div class="loading btn bord-no btn-label" onclick="$(this).css('background-color', '');$('#file').val('');$('#file').click();">
+                    <div class="btn bord-no loading" onclick="$(this).css('background-color', '');$('#file').val('');$('#file').click();" data-i18n-title="Upload" title="Upload">
                         <i class="faicon fa fa-cloud-upload"></i>
-                        <br><span class="btn-remark" i18n-key="Upload">Upload</span>
                     </div>
-                    <div class="btn bord-no btn-label" onclick="cancel();">
+                    <div class="btn bord-no" onclick="cancel();" data-i18n-title="Cancel" title="Cancel">
                         <i class="faicon fa fa-ban"></i>
-                        <br><span class="btn-remark" i18n-key="Cancel">Cancel</span>
                     </div>
                 </div>
 
-                <div class="btn-group btn-group-justified show-when-sort">
-                    <div class="btn bord-no btn-label for-sort for-sort-name" sortitem="name">
+                <div class="btn-group show-when-sort">
+                    <div class="btn bord-no for-sort for-sort-name" sortitem="name" data-i18n-title="Name" title="Name">
                         <i class="faicon fa fa-sort-amount fa-sort-amount-asc"></i>
                         <i class="faicon fa fa-sort-amount fa-sort-amount-desc"></i>
-                        <br><span class="btn-remark" i18n-key="Name">Name</span>
                     </div>
-                    <div class="btn bord-no btn-label for-sort for-sort-size" sortitem="size">
+                    <div class="btn bord-no for-sort for-sort-size" sortitem="size" data-i18n-title="Size" title="Size">
                         <i class="faicon fa fa-sort-amount fa-sort-amount-asc"></i>
                         <i class="faicon fa fa-sort-amount fa-sort-amount-desc"></i>
-                        <br><span class="btn-remark" i18n-key="Size">Size</span>
                     </div>
-                    <div class="btn bord-no btn-label for-sort for-sort-time" sortitem="time">
+                    <div class="btn bord-no for-sort for-sort-time" sortitem="time" data-i18n-title="Time" title="Time">
                         <i class="faicon fa fa-sort-amount fa-sort-amount-asc"></i>
                         <i class="faicon fa fa-sort-amount fa-sort-amount-desc"></i>
-                        <br><span class="btn-remark" i18n-key="Time">Time</span>
                     </div>
-                    <div class="btn bord-no btn-label" onclick="cancel();">
+                    <div class="btn bord-no" onclick="cancel();" data-i18n-title="Cancel" title="Cancel">
                         <i class="faicon fa fa-ban"></i>
-                        <br><span class="btn-remark" i18n-key="Cancel">Cancel</span>
                     </div>
                 </div>
 
-                <div class="btn-group btn-group-justified show-when-select">
-                    <div class="btn bord-no btn-label" onclick="copyfiles();">
+                <div class="btn-group show-when-select">
+                    <div class="btn bord-no" onclick="copyfiles();" data-i18n-title="Copy" title="Copy">
                         <i class="faicon fa fa-copy"></i>
-                        <br><span class="btn-remark" i18n-key="Copy">Copy</span>
                     </div>
-                    <div class="btn bord-no btn-label" onclick="cutfiles();">
+                    <div class="btn bord-no" onclick="cutfiles();" data-i18n-title="Cut" title="Cut">
                         <i class="faicon fa fa-cut"></i>
-                        <br><span class="btn-remark" i18n-key="Cut">Cut</span>
                     </div>
-                    <div class="btn bord-no btn-label" onclick="rename();">
+                    <div class="btn bord-no" onclick="rename();" data-i18n-title="Rename" title="Rename">
                         <i class="faicon fa fa-edit"></i>
-                        <br><span class="btn-remark" i18n-key="Rename">Rename</span>
                     </div>
-                    <div class="btn bord-no btn-label" onclick="deleteFiles();">
+                    <div class="btn bord-no" onclick="deleteFiles();" data-i18n-title="Delete" title="Delete">
                         <i class="faicon fa fa-trash-o"></i>
-                        <br><span class="btn-remark" i18n-key="Delete">Delete</span>
                     </div>
-                    <div class="btn bord-no btn-label" onclick="getUrls();">
+                    <div class="btn bord-no" onclick="getUrls();" data-i18n-title="Url" title="Url">
                         <i class="faicon fa fa-link"></i>
-                        <br><span class="btn-remark" i18n-key="Url">Url</span>
                     </div>
-                    <div class="btn bord-no btn-label" onclick="cancel();">
+                    <div class="btn bord-no" onclick="cancel();" data-i18n-title="Cancel" title="Cancel">
                         <i class="faicon fa fa-ban"></i>
-                        <br><span class="btn-remark" i18n-key="Cancel">Cancel</span>
                     </div>
                 </div>
-                <div class="btn-group btn-group-justified show-when-mvcp">
-                    <div class="btn bord-no btn-label" onclick="paste();">
+
+                <div class="btn-group show-when-mvcp">
+                    <div class="btn bord-no" onclick="paste();" data-i18n-title="Paste" title="Paste">
                         <i class="faicon fa fa-paste"></i>
-                        <br><span class="btn-remark" i18n-key="Paste">Paste</span>
                     </div>
-                    <div class="btn bord-no btn-label" onclick="mkdir();">
+                    <div class="btn bord-no" onclick="mkdir();" data-i18n-title="New Folder" title="New Folder">
                         <i class="faicon fa fa-folder-o"></i>
-                        <br><span class="btn-remark" i18n-key="New Folder">New Folder</span>
                     </div>
-                    <div class="btn bord-no btn-label" onclick="cancel();">
+                    <div class="btn bord-no" onclick="cancel();" data-i18n-title="Cancel" title="Cancel">
                         <i class="faicon fa fa-ban"></i>
-                        <br><span class="btn-remark" i18n-key="Cancel">Cancel</span>
                     </div>
                 </div>
             </div>
@@ -327,6 +313,11 @@
                         <ul id="file-list" class="file-list">
 
                         </ul>
+                        <!-- 空目录空态 -->
+                        <div id="empty-dir" class="empty-dir hide">
+                            <i class="fa fa-folder-open-o"></i>
+                            <p class="i18n-key" i18n-key="Empty folder">此目录为空</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -355,6 +346,10 @@
             <div class="btn bord-no btn-label" onclick="jumpTo();">
                 <i class="faicon fa fa-location-arrow"></i>
                 <br><span class="btn-remark" i18n-key="Jump">Jump</span>
+            </div>
+            <div class="btn bord-no btn-label" onclick="toggleView();">
+                <i class="faicon fa fa-th-large"></i>
+                <br><span class="btn-remark" i18n-key="View">View</span>
             </div>
             <!-- 隐藏文件开关(暂时停用)
             <div class="btn bord-no btn-label toggle-dot" onclick="toggleHidden();">
@@ -451,6 +446,7 @@
         <li id="up-li" class="file" onclick="goUp();">
             <span href="#" class="file-details">
                 <div class="media-block">
+                    <div class="media-left"><i class="fa fa-level-up"></i></div>
                     <div class="media-body">
                         <p class="file-name single-line">...</p>
                     </div>
@@ -510,6 +506,8 @@
                     var row = getRow(children[i]);
                     $('#file-list').append(row);
                 }
+                // 空目录时显示空态块
+                $('#empty-dir').toggleClass('hide', children.length !== 0);
                 applyFilter();
             });
 
@@ -742,6 +740,15 @@
         }
 
         // ---- 新增功能 ----
+        // 视图切换: 列表 <-> 网格, localStorage 持久化
+        var applyView = function () {
+            $('#file-list').toggleClass('grid-view', getStorage('viewMode') === 'grid');
+        };
+        var toggleView = function () {
+            setStorage('viewMode', getStorage('viewMode') === 'grid' ? 'list' : 'grid');
+            applyView();
+        };
+
         var applyFilter = function () {
             var kw = ($('#file-filter').val() || '').toLowerCase();
             $('#file-list li.file').each(function () {
@@ -819,6 +826,17 @@
             check();
         }
     </script>
+</div>
+
+<!-- 上传进度 toast: 上传期间固定右下角显示, 结束后隐藏 -->
+<div id="upload-toast" class="hide">
+    <div class="upload-toast-head">
+        <i class="fa fa-cloud-upload"></i>
+        <span id="upload-toast-name"></span>
+        <span id="upload-toast-percent" class="upload-toast-percent"></span>
+    </div>
+    <div class="upload-toast-bar"><div id="upload-toast-progress"></div></div>
+    <small id="upload-toast-count" class="upload-toast-count"></small>
 </div>
 </body>
 </html>

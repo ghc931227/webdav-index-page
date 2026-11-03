@@ -8,20 +8,48 @@
     --brand: #4A6CF7;              /* 主色 (Alist 同款蓝紫系) */
     --brand-dark: #3B5BDB;
     --brand-soft: #EAEEFF;         /* 主色浅底, 用于选中态 */
+    --brand-contrast: #FFFFFF;     /* 品牌色上的文字/图标 */
     --text-main: #2A3242;          /* 主文字 */
     --text-sub: #8A94A6;           /* 次要文字/元信息 */
     --icon-muted: #98A2B3;         /* 图标默认色 */
+    --bg-body: #EEF1F6;            /* 页面底色 */
+    --bg-surface: #FFFFFF;         /* 卡片/顶栏表面色 */
     --surface-muted: #F2F4F8;      /* 图标块/浅底 */
+    --border-soft: #E3E8F0;        /* 分隔线/卡片描边 */
     --bg-hover: rgba(74, 108, 247, 0.08);
     --shadow-bar: 0 1px 4px rgba(16, 24, 40, 0.08);
     --radius-row: 8px;
     --radius-thumb: 6px;
 }
 
+/* ---------------- 暗色模式 ----------------
+   跟随系统, 只覆盖变量即可全局生效 */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --brand-soft: rgba(99, 130, 255, 0.18);
+        --text-main: #E4E9F2;
+        --text-sub: #98A2B8;
+        --icon-muted: #8B94A8;
+        --bg-body: #161A24;
+        --bg-surface: #1F2432;
+        --surface-muted: #2B3245;
+        --border-soft: #303748;
+        --bg-hover: rgba(122, 148, 255, 0.14);
+        --shadow-bar: 0 1px 4px rgba(0, 0, 0, 0.4);
+    }
+}
+
+body {
+    background-color: var(--bg-body);
+}
+
 /* ---------------- 顶栏 ---------------- */
 #navbar {
-    background-color: #FFFFFF;
+    background-color: var(--bg-surface);
     box-shadow: var(--shadow-bar);
+}
+#navbar .bord-btm {
+    border-bottom-color: var(--border-soft)!important;
 }
 #navbar .breadcrumb {
     font-size: 13px;
@@ -45,10 +73,18 @@
     text-decoration: none;
 }
 
-/* 过滤框聚焦跟随主色 */
+/* 过滤框跟随主题表面色 */
+#file-filter {
+    background-color: var(--bg-surface);
+    color: var(--text-main);
+    border-color: var(--border-soft);
+}
 #file-filter:focus {
     border-color: var(--brand);
     box-shadow: 0 0 0 2px var(--bg-hover);
+}
+#file-filter::placeholder {
+    color: var(--text-sub);
 }
 
 /* ---------------- 工具栏按钮 ----------------
@@ -83,9 +119,50 @@
     color: var(--brand);
 }
 
+/* ---------------- 桌面工具栏(重组) ----------------
+   右对齐一行紧凑图标钮: 常态 = 主按钮「上传」+ 新建/全选/刷新/排序/跳转,
+   其余状态组沿用 changeToolbar 机制, 只显示一组 */
+#navbar .hidden-xs.hidden-sm {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 0 10px;
+}
+#navbar .btn-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+#navbar .btn {
+    padding: 8px 10px!important;
+    border: none;
+    cursor: pointer;
+}
+/* 主操作按钮: 品牌色实心 */
+#navbar .btn-brand {
+    background-color: var(--brand)!important;
+    color: var(--brand-contrast)!important;
+    padding: 8px 14px!important;
+}
+#navbar .btn-brand:hover,
+#navbar .btn-brand:focus {
+    background-color: var(--brand-dark)!important;
+    color: var(--brand-contrast)!important;
+}
+#navbar .btn-brand .faicon,
+#navbar .btn-brand .btn-remark {
+    color: var(--brand-contrast)!important;
+}
+#navbar .btn-brand .btn-remark {
+    font-size: 13px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
 /* ---------------- 移动端 footer ---------------- */
 #footer {
-    background-color: #FFFFFF;
+    background-color: var(--bg-surface);
     box-shadow: 0 -1px 4px rgba(16, 24, 40, 0.08);
 }
 
@@ -93,6 +170,7 @@
 #page-content .panel {
     border: none;
     border-radius: 10px;
+    background-color: var(--bg-surface);
     box-shadow: var(--shadow-bar);
 }
 
@@ -161,4 +239,151 @@
 /* 窄屏隐藏右侧元信息, 给文件名留空间 */
 @media (max-width: 767px) {
     .file-list .file-meta { display: none; }
+}
+
+/* ---------------- 网格视图 ----------------
+   #file-list 上加 .grid-view 时行变卡片, 图标块放大, 隐藏元信息 */
+.file-list.grid-view {
+    display: grid;
+    /* auto-fit: 空轨道会被收纳, 少量文件时卡片自动放大铺满整行 */
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+    padding: 8px 0;
+}
+.file-list.grid-view > li {
+    position: relative;
+    margin: 0;
+    padding: 14px 8px 10px;
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    background-color: var(--bg-surface);
+    transition: background-color .12s, border-color .12s;
+}
+.file-list.grid-view > li:hover {
+    border-color: var(--brand);
+    background-color: var(--bg-hover);
+}
+.file-list.grid-view .file-attach-icon {
+    display: none;
+}
+/* 勾选框浮动到卡片右上角 */
+.file-list.grid-view .file-control {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: auto!important;
+}
+.file-list.grid-view .media-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+.file-list.grid-view .media-block > .media-left {
+    width: 64px;
+    height: 64px;
+    line-height: 64px;
+    font-size: 30px;
+    border-radius: 12px;
+}
+.file-list.grid-view .media-block > .media-left .fa,
+.file-list.grid-view .media-block > .media-left [class^="demo-"],
+.file-list.grid-view .media-block > .media-left [class*=" demo-"] {
+    line-height: 64px;
+}
+.file-list.grid-view .media-block > .media-left .file-thumb {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+}
+.file-list.grid-view .media-body {
+    width: 100%;
+}
+.file-list.grid-view .file-name {
+    text-align: center;
+    font-size: 13px;
+    white-space: normal;
+    /* 整词优先换行, 放不下才拆词, 避免英文被逐字母截断 */
+    overflow-wrap: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.file-list.grid-view .file-meta {
+    display: none;
+}
+
+/* ---------------- 空目录空态 ---------------- */
+.empty-dir {
+    text-align: center;
+    padding: 56px 0 44px;
+    color: var(--text-sub);
+}
+.empty-dir .fa {
+    display: block;
+    font-size: 44px;
+    margin-bottom: 12px;
+}
+.empty-dir p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* ---------------- 上传进度 toast ---------------- */
+#upload-toast {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 1100;
+    width: 260px;
+    padding: 12px 14px;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(16, 24, 40, 0.16);
+}
+#upload-toast .upload-toast-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-main);
+}
+#upload-toast .upload-toast-head .fa {
+    color: var(--brand);
+}
+#upload-toast #upload-toast-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#upload-toast .upload-toast-percent {
+    color: var(--brand);
+    font-weight: 600;
+}
+#upload-toast .upload-toast-bar {
+    height: 6px;
+    margin-top: 8px;
+    border-radius: 3px;
+    background-color: var(--surface-muted);
+    overflow: hidden;
+}
+#upload-toast #upload-toast-progress {
+    height: 100%;
+    width: 0;
+    background-color: var(--brand);
+    border-radius: 3px;
+    transition: width .15s;
+}
+#upload-toast .upload-toast-count {
+    display: block;
+    margin-top: 6px;
+    color: var(--text-sub);
+}
+/* 手机端 footer 固定在底部, toast 上移避开 */
+@media (max-width: 991px) {
+    #upload-toast { bottom: 5.6em; right: 10px; }
 }
