@@ -200,6 +200,9 @@ body {
     width: 32px;
     height: 32px;
     line-height: 32px;
+    /* 覆盖 nifty 的 padding-right: 10px, 否则 border-box 下字形不在块内居中 */
+    padding: 0;
+    flex-shrink: 0;
     font-size: 15px;
     text-align: center;
     vertical-align: middle;
@@ -220,7 +223,25 @@ body {
     vertical-align: middle;
 }
 
-/* 名称与右侧元信息 */
+/* 复选框列: 与图标块同高并垂直居中, 覆盖 nifty 的 float + line-height:3em */
+.file-list > li .file-control {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    line-height: normal;
+}
+
+/* 名称与右侧元信息: flex 垂直居中, 修复文字顶在图标块上沿的错位 */
+.file-list .media-block {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.file-list .media-body {
+    flex: 1;
+    min-width: 0;
+}
 .file-list .file-name {
     color: var(--text-main);
     font-weight: 500;
@@ -228,7 +249,8 @@ body {
     line-height: 18px;
 }
 .file-list .file-meta {
-    padding: 3px 0 0 12px;
+    margin-left: auto;
+    padding: 0 0 0 12px;
     white-space: nowrap;
 }
 .file-list .file-meta small,

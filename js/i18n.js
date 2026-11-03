@@ -154,4 +154,8 @@ function changeLang(lang) {
     try { localStorage.setItem('lang', lang); } catch (e) {}
     applyI18n();
     if (typeof updateLangBtn === "function") updateLangBtn();
+    // 文件行的相对时间等文案是渲染时固化的, 切语言后重载当前目录保持一致
+    if (typeof loadDir === "function" && typeof fs !== "undefined" && typeof curPath !== "undefined") {
+        loadDir(fs.dir(curPath));
+    }
 }

@@ -4,6 +4,8 @@ A zero-build, pure-static WebDAV web client — copy the files into any WebDAV-s
 
 ![File list](screenshots/file-list.jpg)
 
+![Grid view](screenshots/grid-view.jpg)
+
 ## Features
 
 - **File management**: browse, create folder/file, upload (multi-file & entire folders, drag & drop), download, copy/cut/paste, rename, delete — with overwrite/skip conflict handling
@@ -17,7 +19,7 @@ A zero-build, pure-static WebDAV web client — copy the files into any WebDAV-s
 - **Root auto-discovery**: if no `?root=` is given, the page probes its own directory, then walks up level by level until a WebDAV endpoint responds
 - **i18n**: English / 简体中文, auto-detected from the browser, switchable anytime via the header button, persisted in `localStorage`
 - **Read-only share mode**: append `?readonly` to the URL to hide all write operations
-- **Nice touches**: natural sort (file2 < file10), in-directory keyword filter, per-type file icons with image thumbnails, hidden (dot) files, keyboard shortcuts (`Ctrl+A` select, `Delete` delete, `F2` rename, `Esc` cancel, `Ctrl+S` save in viewer), mobile layout with long-press multi-select, XSS-escaped file names
+- **Nice touches**: list & grid view toggle (persisted), dark mode following system preference, natural sort (file2 < file10), in-directory keyword filter, per-type file icons with image thumbnails, hidden (dot) files, keyboard shortcuts (`Ctrl+A` select, `Delete` delete, `F2` rename, `Esc` cancel, `Ctrl+S` save in viewer), mobile layout with long-press multi-select, XSS-escaped file names
 
 ![Text editor](screenshots/editor.jpg)
 
